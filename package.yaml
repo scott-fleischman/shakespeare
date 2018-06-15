@@ -1,0 +1,16 @@
+name: shakespeare
+version: 0.1.0
+
+dependencies:
+- base
+- containers
+- text
+
+ghc-options:
+- -Wall
+- -Werror
+
+executables:
+  hamlet:
+    source-dirs: source
+    main: Hamlet.hs
