@@ -14,3 +14,12 @@ executables:
   hamlet:
     source-dirs: source
     main: Hamlet.hs
+    other-modules: []
+  auth:
+    source-dirs: source
+    main: Auth.hs
+    other-modules: []
+    dependencies:
+    - authenticate-oauth
+    - bytestring
+    - twitter-conduit
