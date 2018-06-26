@@ -4,6 +4,7 @@ module Shakespeare.Hamlet where
 
 import           Data.Text (Text)
 import qualified Data.Text as Text
+import qualified Data.Text.Lazy as Text.Lazy
 import qualified Data.Text.IO as Text.IO
 import qualified Data.Text.Lazy.IO as Text.Lazy.IO
 import           Formatting ((%))
@@ -15,39 +16,44 @@ main = do
   hamletText <- Text.IO.readFile "hamlet.txt"
   let lines = getTextLines hamletText
   trails <- eitherToError . getTrails $ lines
-  let
-    trailsWithTails = filter ((> 1) . trailBlankLines) trails
-    formatLine (Line (LineNumber n) t) = Formatting.format (Formatting.right 5 ' ' % Formatting.stext) n t
-    formatTrail (Trail l c) = Formatting.format (Formatting.right 5 ' ' % Formatting.text) c (formatLine l)
-  mapM_ (Text.Lazy.IO.putStrLn . formatTrail) trailsWithTails
 
-  outline <- eitherToError $ parseOutline trails
-  Text.Lazy.IO.putStrLn $ Formatting.format ("title: " % Formatting.text) (formatTrail $ outlineTitle outline)
-  Text.Lazy.IO.putStrLn $ Formatting.format ("author: " % Formatting.text) (formatTrail $ outlineAuthor outline)
-  Text.Lazy.IO.putStrLn $ Formatting.format ("contents count: " % Formatting.shown) (length $outlineContents outline)
-  Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length $outlineActors outline)
-  Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
-  print $ renderOutline outline == hamletText
+  outline1 <- eitherToError $ parseOutline1 trails
+  Text.Lazy.IO.putStrLn $ Formatting.format ("title: " % Formatting.text) (formatTrail $ outlineTitle outline1)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("author: " % Formatting.text) (formatTrail $ outlineAuthor outline1)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("contents count: " % Formatting.shown) (length $outlineContents outline1)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length $outlineActors outline1)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline1)
+  print $ renderOutline1 outline1 == hamletText
+
+  mapM_ (Text.Lazy.IO.putStrLn . formatTrail) (filter ((> 0) . trailBlankLines) $ outlineContents outline1)
+
+formatLine :: Line -> Text.Lazy.Text
+formatLine (Line (LineNumber n) t) = Formatting.format (Formatting.right 5 ' ' % Formatting.stext) n t
+
+formatTrail :: Trail -> Text.Lazy.Text
+formatTrail (Trail l c) = Formatting.format (Formatting.right 5 ' ' % Formatting.text) c (formatLine l)
 
 eitherToError :: Show a => Either a b -> IO b
 eitherToError (Left err) = fail . show $ err
 eitherToError (Right x) = return x
 
-data Outline = Outline
-  { outlineTitle :: Trail
-  , outlineAuthor :: Trail
-  , outlineContents :: [Trail]
-  , outlineActors :: [Trail]
-  , outlineActs :: [[Trail]]
+data OutlineV a b c d e = Outline
+  { outlineTitle :: a
+  , outlineAuthor :: b
+  , outlineContents :: c
+  , outlineActors :: d
+  , outlineActs :: e
   } deriving Show
+
+type Outline1 = OutlineV Trail Trail [Trail] [Trail] [[Trail]]
 
 data OutlineError
   = OutlineNoTitle
   | OutlineNoAuthor
   deriving Show
 
-parseOutline :: [Trail] -> Either OutlineError Outline
-parseOutline input = do
+parseOutline1 :: [Trail] -> Either OutlineError Outline1
+parseOutline1 input = do
   (title, afterTitle) <-
     case input of
       [] -> Left OutlineNoTitle
@@ -61,8 +67,8 @@ parseOutline input = do
   let acts = parseActs afterActors
   Right $ Outline title author contents actors acts
 
-renderOutline :: Outline -> Text
-renderOutline (Outline title author contents actors acts) =
+renderOutline1 :: Outline1 -> Text
+renderOutline1 (Outline title author contents actors acts) =
   mapAppendEndline $
     [ renderTrail title
     , renderTrail author
