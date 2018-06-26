@@ -64,7 +64,10 @@ newtype Title = Title Text
 newtype Author = Author Text
 
 data TitleError = TitleInvalidBlankLines Int deriving Show
-data AuthorError = AuthorInvalidBlankLines Int deriving Show
+data AuthorError
+  = AuthorInvalidBlankLines Int
+  | AuthorNoBy Text
+  deriving Show
 
 data AllError
   = AllErrorOutlineTrail OutlineTrailError
@@ -83,10 +86,16 @@ parseOutline2 input = do
   return step3
 
 parseAuthor :: Trail -> Either AuthorError Author
-parseAuthor (Trail (Line _ t) c) =
-  if c == authorBlankLineCount
-    then Right $ Author t
-    else Left $ AuthorInvalidBlankLines c
+parseAuthor (Trail (Line _ t) c) = do
+  line <-
+    if c == authorBlankLineCount
+      then Right t
+      else Left $ AuthorInvalidBlankLines c
+  result <-
+    case Text.stripPrefix "by " line of
+      Nothing -> Left $ AuthorNoBy line
+      Just x -> Right x
+  Right $ Author result
 
 authorBlankLineCount :: Int
 authorBlankLineCount = 6

@@ -37,5 +37,6 @@ tests:
     main: HamletTest.hs
     other-modules: []
     dependencies:
+    - Diff
     - hedgehog
     - shakespeare
