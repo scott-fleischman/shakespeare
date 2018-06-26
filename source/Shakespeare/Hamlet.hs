@@ -21,7 +21,7 @@ main = do
 
   outline <- eitherToError $ parseOutline2 trails
   Text.Lazy.IO.putStrLn $ Formatting.format ("title: " % Formatting.stext) ((\(Title t) -> t) $ outlineTitle outline)
-  Text.Lazy.IO.putStrLn $ Formatting.format ("author: " % Formatting.text) (formatTrail $ outlineAuthor outline)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("author: " % Formatting.stext) ((\(Author t) -> t) $ outlineAuthor outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("contents count: " % Formatting.shown) (length $outlineContents outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length $outlineActors outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
@@ -49,8 +49,11 @@ data OutlineV a b c d e = Outline
 outlineTitleLens :: forall a a' b c d e f. Functor f => (a -> f a') -> OutlineV a b c d e -> f (OutlineV a' b c d e)
 outlineTitleLens f (Outline a b c d e) = fmap (\a' -> Outline a' b c d e) (f a)
 
+outlineAuthorLens :: forall a b b' c d e f. Functor f => (b -> f b') -> OutlineV a b c d e -> f (OutlineV a b' c d e)
+outlineAuthorLens f (Outline a b c d e) = fmap (\b' -> Outline a b' c d e) (f b)
+
 type Outline1 = OutlineV Trail Trail [Trail] [Trail] [[Trail]]
-type Outline2 = OutlineV Title Trail [Trail] [Trail] [[Trail]]
+type Outline2 = OutlineV Title Author [Trail] [Trail] [[Trail]]
 
 data OutlineTrailError
   = OutlineNoTitle
@@ -58,20 +61,38 @@ data OutlineTrailError
   deriving Show
 
 newtype Title = Title Text
+newtype Author = Author Text
 
 data TitleError = TitleInvalidBlankLines Int deriving Show
+data AuthorError = AuthorInvalidBlankLines Int deriving Show
 
 data AllError
   = AllErrorOutlineTrail OutlineTrailError
   | AllErrorTitle TitleError
+  | AllErrorAuthor AuthorError
   deriving Show
 
 parseOutline2 :: [Trail] -> Either AllError Outline2
 parseOutline2 input = do
-  outline1 <- Lens.over Lens._Left AllErrorOutlineTrail $
+  step1 <- Lens.over Lens._Left AllErrorOutlineTrail $
     parseOutline1 input
-  Lens.over Lens._Left AllErrorTitle $
-    outlineTitleLens parseTitle outline1
+  step2 <- Lens.over Lens._Left AllErrorTitle $
+    outlineTitleLens parseTitle step1
+  step3 <- Lens.over Lens._Left AllErrorAuthor $
+    outlineAuthorLens parseAuthor step2
+  return step3
+
+parseAuthor :: Trail -> Either AuthorError Author
+parseAuthor (Trail (Line _ t) c) =
+  if c == authorBlankLineCount
+    then Right $ Author t
+    else Left $ AuthorInvalidBlankLines c
+
+authorBlankLineCount :: Int
+authorBlankLineCount = 6
+
+renderAuthor :: Author -> Text
+renderAuthor (Author t) = Text.concat $ t : makeBlankLines authorBlankLineCount
 
 parseTitle :: Trail -> Either TitleError Title
 parseTitle (Trail (Line _ t) c) =
@@ -113,7 +134,12 @@ renderOutlineV (Outline fa fb fc fd fe) (Outline a b c d e) =
     , fe e
     ]
 
-outline1Renderer :: OutlineV (Trail -> Text) (Trail -> Text) ([Trail] -> Text) ([Trail] -> Text) ([[Trail]] -> Text)
+outline1Renderer :: OutlineV
+  (Trail      -> Text)
+  (Trail      -> Text)
+  ([Trail]    -> Text)
+  ([Trail]    -> Text)
+  ([[Trail]]  -> Text)
 outline1Renderer =
   Outline
     renderTrail
@@ -122,8 +148,16 @@ outline1Renderer =
     renderTrails
     (Text.intercalate "\n" . fmap renderTrails)
 
-outline2Renderer :: OutlineV (Title -> Text) (Trail -> Text) ([Trail] -> Text) ([Trail] -> Text) ([[Trail]] -> Text)
-outline2Renderer = outline1Renderer { outlineTitle = renderTitle }
+outline2Renderer :: OutlineV
+  (Title      -> Text)
+  (Author     -> Text)
+  ([Trail]    -> Text)
+  ([Trail]    -> Text)
+  ([[Trail]]  -> Text)
+outline2Renderer = outline1Renderer
+  { outlineTitle = renderTitle
+  , outlineAuthor = renderAuthor
+  }
 
 mapAppendEndline :: [Text] -> Text
 mapAppendEndline = Text.concat . fmap (flip Text.append "\n")
