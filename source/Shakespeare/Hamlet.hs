@@ -64,7 +64,7 @@ parseOutline1 input = do
       x : xs -> Right (x, xs)
   let (contents, afterContents) = takeWhileExtraSplit ((<= 1) . trailBlankLines) afterAuthor
   let (actors, afterActors) = takeWhileExtraSplit ((<= 1) . trailBlankLines) afterContents
-  let acts = parseActs afterActors
+  let acts = parseActsTrail afterActors
   Right $ Outline title author contents actors acts
 
 renderOutline1 :: Outline1 -> Text
@@ -89,13 +89,13 @@ renderTrails = Text.intercalate "\n" . fmap renderTrail
 renderTrail :: Trail -> Text
 renderTrail (Trail (Line _ text) blanks) = Text.concat $ text : replicate blanks "\n"
 
-parseActs :: [Trail] -> [[Trail]]
-parseActs [] = []
-parseActs input@(_ : _) =
+parseActsTrail :: [Trail] -> [[Trail]]
+parseActsTrail [] = []
+parseActsTrail input@(_ : _) =
   let (current, after) = takeWhileExtraSplit ((<= 1) . trailBlankLines) input
   in case after of
     [] -> [current]
-    xs@(_ : _) -> let results = parseActs xs in current : results
+    xs@(_ : _) -> let results = parseActsTrail xs in current : results
 
 takeWhileExtraSplit :: (a -> Bool) -> [a] -> ([a], [a])
 takeWhileExtraSplit _ [] = ([], [])
