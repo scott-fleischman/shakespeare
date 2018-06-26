@@ -52,7 +52,7 @@ outlineTitleLens f (Outline a b c d e) = fmap (\a' -> Outline a' b c d e) (f a)
 outlineAuthorLens :: forall a b b' c d e f. Functor f => (b -> f b') -> OutlineV a b c d e -> f (OutlineV a b' c d e)
 outlineAuthorLens f (Outline a b c d e) = fmap (\b' -> Outline a b' c d e) (f b)
 
-type Outline1 = OutlineV Trail Trail [Trail] [Trail] [[Trail]]
+type Outline1 = OutlineV Trail Trail  [Trail] [Trail] [[Trail]]
 type Outline2 = OutlineV Title Author [Trail] [Trail] [[Trail]]
 
 data OutlineTrailError
