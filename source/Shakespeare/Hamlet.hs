@@ -100,15 +100,30 @@ parseOutline1 input = do
   let acts = parseActsTrail afterActors
   Right $ Outline title author contents actors acts
 
-renderOutline1 :: Outline1 -> Text
-renderOutline1 (Outline title author contents actors acts) =
+renderOutlineV
+  :: OutlineV (a -> Text) (b -> Text) (c -> Text) (d -> Text) (e -> Text)
+  -> OutlineV a b c d e
+  -> Text
+renderOutlineV (Outline fa fb fc fd fe) (Outline a b c d e) =
   mapAppendEndline $
-    [ renderTrail title
-    , renderTrail author
-    , renderTrails contents
-    , renderTrails actors
-    , Text.intercalate "\n" $ fmap renderTrails acts
+    [ fa a
+    , fb b
+    , fc c
+    , fd d
+    , fe e
     ]
+
+outline1Renderer :: OutlineV (Trail -> Text) (Trail -> Text) ([Trail] -> Text) ([Trail] -> Text) ([[Trail]] -> Text)
+outline1Renderer =
+  Outline
+    renderTrail
+    renderTrail
+    renderTrails
+    renderTrails
+    (Text.intercalate "\n" . fmap renderTrails)
+
+outline2Renderer :: OutlineV (Title -> Text) (Trail -> Text) ([Trail] -> Text) ([Trail] -> Text) ([[Trail]] -> Text)
+outline2Renderer = outline1Renderer { outlineTitle = renderTitle }
 
 mapAppendEndline :: [Text] -> Text
 mapAppendEndline = Text.concat . fmap (flip Text.append "\n")

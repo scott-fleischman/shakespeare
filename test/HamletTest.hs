@@ -6,14 +6,14 @@ import qualified Hedgehog
 import qualified Shakespeare.Hamlet
 import qualified Data.Text.IO as Text.IO
 
-prop_parseRenderOutline1 :: Hedgehog.Property
-prop_parseRenderOutline1 =
+prop_parseRender :: Hedgehog.Property
+prop_parseRender =
   Hedgehog.withTests 1 . Hedgehog.property $ do
     hamletText <- Monad.IO.Class.liftIO $ Text.IO.readFile "hamlet.txt"
     let hamletLines = Shakespeare.Hamlet.getTextLines hamletText
     trails <- Monad.IO.Class.liftIO $ Shakespeare.Hamlet.eitherToError . Shakespeare.Hamlet.getTrails $ hamletLines
-    outline1 <- Monad.IO.Class.liftIO $ Shakespeare.Hamlet.eitherToError $ Shakespeare.Hamlet.parseOutline1 trails
-    Shakespeare.Hamlet.renderOutline1 outline1 === hamletText
+    outline <- Monad.IO.Class.liftIO $ Shakespeare.Hamlet.eitherToError $ Shakespeare.Hamlet.parseOutline2 trails
+    Shakespeare.Hamlet.renderOutlineV Shakespeare.Hamlet.outline2Renderer outline === hamletText
 
 tests :: IO Bool
 tests = Hedgehog.checkParallel $$(Hedgehog.discover)
