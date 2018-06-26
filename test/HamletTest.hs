@@ -11,10 +11,8 @@ prop_parseRender :: Hedgehog.Property
 prop_parseRender =
   Hedgehog.withTests 1 . Hedgehog.property $ do
     hamletText <- Monad.IO.Class.liftIO $ Text.IO.readFile "hamlet.txt"
-    let hamletLines = Shakespeare.Hamlet.getTextLines hamletText
-    trails <- Monad.IO.Class.liftIO $ Shakespeare.Hamlet.eitherToError . Shakespeare.Hamlet.getTrails $ hamletLines
-    outline <- Monad.IO.Class.liftIO $ Shakespeare.Hamlet.eitherToError $ Shakespeare.Hamlet.parseOutline2 trails
-    Shakespeare.Hamlet.renderOutlineV Shakespeare.Hamlet.outline2Renderer outline
+    outline <- Monad.IO.Class.liftIO $ Shakespeare.Hamlet.eitherToError $ Shakespeare.Hamlet.parseFull hamletText
+    Shakespeare.Hamlet.renderOutlineV Shakespeare.Hamlet.fullRenderer outline
       `linesShouldEqual`
       hamletText
 

@@ -16,10 +16,8 @@ import           Prelude hiding (lines)
 main :: IO ()
 main = do
   hamletText <- Text.IO.readFile "hamlet.txt"
-  let lines = getTextLines hamletText
-  trails <- eitherToError . getTrails $ lines
 
-  outline <- eitherToError $ parseOutline2 trails
+  outline <- eitherToError $ parseFull hamletText
   Text.Lazy.IO.putStrLn $ Formatting.format ("title: " % Formatting.stext) ((\(Title t) -> t) $ outlineTitle outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("author: " % Formatting.stext) ((\(Author t) -> t) $ outlineAuthor outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("contents count: " % Formatting.shown) (length $outlineContents outline)
@@ -71,20 +69,18 @@ data AuthorError
   deriving Show
 
 data AllError
-  = AllErrorOutlineTrail OutlineTrailError
-  | AllErrorTitle TitleError
-  | AllErrorAuthor AuthorError
+  = AllErrorInitialBlankLine  InitialBlankLine
+  | AllErrorOutlineTrail      OutlineTrailError
+  | AllErrorTitle             TitleError
+  | AllErrorAuthor            AuthorError
   deriving Show
 
-parseOutline2 :: [Trail] -> Either AllError Outline2
-parseOutline2 input = do
-  step1 <- Lens.over Lens._Left AllErrorOutlineTrail $
-    parseOutline1 input
-  step2 <- Lens.over Lens._Left AllErrorTitle $
-    outlineTitleLens parseTitle step1
-  step3 <- Lens.over Lens._Left AllErrorAuthor $
-    outlineAuthorLens parseAuthor step2
-  return step3
+parseFull :: Text -> Either AllError Outline2
+parseFull input
+  =  (Lens.over Lens._Left AllErrorInitialBlankLine . getTrails . getTextLines $ input)
+  >>= Lens.over Lens._Left AllErrorOutlineTrail     . parseOutline1
+  >>= Lens.over Lens._Left AllErrorTitle            . outlineTitleLens parseTitle
+  >>= Lens.over Lens._Left AllErrorAuthor           . outlineAuthorLens parseAuthor
 
 parseAuthor :: Trail -> Either AuthorError Author
 parseAuthor (Trail (Line _ t) c) = do
@@ -157,8 +153,8 @@ outline1Renderer =
     renderTrails
     (Text.intercalate endline . fmap renderTrails)
 
-outline2Renderer :: OutlineRenderer Text Title Author [Trail] [Trail] [[Trail]]
-outline2Renderer = outline1Renderer
+fullRenderer :: OutlineRenderer Text Title Author [Trail] [Trail] [[Trail]]
+fullRenderer = outline1Renderer
   { outlineTitle = renderTitle
   , outlineAuthor = renderAuthor
   }
