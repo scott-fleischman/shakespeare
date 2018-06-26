@@ -11,13 +11,18 @@ ghc-options:
 - -Wall
 - -Werror
 
+library:
+  source-dirs: source
+
 executables:
   hamlet:
-    source-dirs: source
+    source-dirs: app
     main: Hamlet.hs
     other-modules: []
+    dependencies:
+    - shakespeare
   auth:
-    source-dirs: source
+    source-dirs: app
     main: Auth.hs
     other-modules: []
     dependencies:

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Main where
+module Shakespeare.Hamlet where
 
 import           Data.Text (Text)
 import qualified Data.Text as Text
@@ -63,16 +63,22 @@ parseOutline input = do
 
 renderOutline :: Outline -> Text
 renderOutline (Outline title author contents actors acts) =
-  Text.concat $
-    fmap (flip Text.append endline) $
-      [ renderTrail title
-      , renderTrail author
-      ]
-      ++ fmap renderTrail contents
-      ++ fmap renderTrail actors
-      ++ fmap (Text.intercalate endline . fmap renderTrail) acts
-  where
-  endline = "\n"
+  mapAppendEndline $
+    [ renderTrail title
+    , renderTrail author
+    , renderTrails contents
+    , renderTrails actors
+    ]
+    ++ fmap renderTrails acts
+
+mapAppendEndline :: [Text] -> Text
+mapAppendEndline = Text.concat . fmap (flip Text.append "\n")
+
+addFinalEndline :: Text -> Text
+addFinalEndline input = Text.append input "\n"
+
+renderTrails :: [Trail] -> Text
+renderTrails = Text.intercalate "\n" . fmap renderTrail
 
 renderTrail :: Trail -> Text
 renderTrail (Trail (Line _ text) blanks) = Text.concat $ text : replicate blanks "\n"
