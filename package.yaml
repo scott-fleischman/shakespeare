@@ -29,3 +29,12 @@ executables:
     - authenticate-oauth
     - bytestring
     - twitter-conduit
+
+tests:
+  hamlet-test:
+    source-dirs: test
+    main: HamletTest.hs
+    other-modules: []
+    dependencies:
+    - hedgehog
+    - shakespeare
