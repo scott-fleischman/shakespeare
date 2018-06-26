@@ -159,7 +159,7 @@ outline1Renderer =
     renderTrail
     renderTrails
     renderTrails
-    (Text.intercalate "\n" . fmap renderTrails)
+    (Text.intercalate endline . fmap renderTrails)
 
 outline2Renderer :: OutlineV
   (Title      -> Text)
@@ -172,20 +172,23 @@ outline2Renderer = outline1Renderer
   , outlineAuthor = renderAuthor
   }
 
+endline :: Text
+endline = "\n"
+
 mapAppendEndline :: [Text] -> Text
-mapAppendEndline = Text.concat . fmap (flip Text.append "\n")
+mapAppendEndline = Text.concat . fmap (flip Text.append endline)
 
 addFinalEndline :: Text -> Text
-addFinalEndline input = Text.append input "\n"
+addFinalEndline input = Text.append input endline
 
 renderTrails :: [Trail] -> Text
-renderTrails = Text.intercalate "\n" . fmap renderTrail
+renderTrails = Text.intercalate endline . fmap renderTrail
 
 renderTrail :: Trail -> Text
 renderTrail (Trail (Line _ text) blanks) = Text.append text $ makeBlankLines blanks
 
 makeBlankLines :: Int -> Text
-makeBlankLines blanks = Text.replicate blanks "\n"
+makeBlankLines blanks = Text.replicate blanks endline
 
 parseActsTrail :: [Trail] -> [[Trail]]
 parseActsTrail [] = []
