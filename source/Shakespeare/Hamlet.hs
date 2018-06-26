@@ -104,8 +104,8 @@ renderAuthor :: Author -> Text
 renderAuthor (Author t) = Text.concat $
   [ "by "
   , t
+  , makeBlankLines authorBlankLineCount
   ]
-  ++ makeBlankLines authorBlankLineCount
 
 parseTitle :: Trail -> Either TitleError Title
 parseTitle (Trail (Line _ t) c) =
@@ -117,7 +117,7 @@ titleBlankLineCount :: Int
 titleBlankLineCount = 3
 
 renderTitle :: Title -> Text
-renderTitle (Title t) = Text.concat $ t : makeBlankLines titleBlankLineCount
+renderTitle (Title t) = Text.append t $ makeBlankLines titleBlankLineCount
 
 parseOutline1 :: [Trail] -> Either OutlineTrailError Outline1
 parseOutline1 input = do
@@ -182,10 +182,10 @@ renderTrails :: [Trail] -> Text
 renderTrails = Text.intercalate "\n" . fmap renderTrail
 
 renderTrail :: Trail -> Text
-renderTrail (Trail (Line _ text) blanks) = Text.concat $ text : makeBlankLines blanks
+renderTrail (Trail (Line _ text) blanks) = Text.append text $ makeBlankLines blanks
 
-makeBlankLines :: Int -> [Text]
-makeBlankLines blanks = replicate blanks "\n"
+makeBlankLines :: Int -> Text
+makeBlankLines blanks = Text.replicate blanks "\n"
 
 parseActsTrail :: [Trail] -> [[Trail]]
 parseActsTrail [] = []
