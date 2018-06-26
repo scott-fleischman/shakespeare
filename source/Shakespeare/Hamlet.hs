@@ -101,7 +101,11 @@ authorBlankLineCount :: Int
 authorBlankLineCount = 6
 
 renderAuthor :: Author -> Text
-renderAuthor (Author t) = Text.concat $ t : makeBlankLines authorBlankLineCount
+renderAuthor (Author t) = Text.concat $
+  [ "by "
+  , t
+  ]
+  ++ makeBlankLines authorBlankLineCount
 
 parseTitle :: Trail -> Either TitleError Title
 parseTitle (Trail (Line _ t) c) =
