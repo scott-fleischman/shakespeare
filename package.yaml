@@ -5,6 +5,7 @@ dependencies:
 - base
 - containers
 - formatting
+- lens
 - text
 
 ghc-options:

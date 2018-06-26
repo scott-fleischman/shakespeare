@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Shakespeare.Hamlet where
 
+import qualified Control.Lens as Lens
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Text.Lazy
@@ -17,15 +19,14 @@ main = do
   let lines = getTextLines hamletText
   trails <- eitherToError . getTrails $ lines
 
-  outline1 <- eitherToError $ parseOutline1 trails
-  Text.Lazy.IO.putStrLn $ Formatting.format ("title: " % Formatting.text) (formatTrail $ outlineTitle outline1)
-  Text.Lazy.IO.putStrLn $ Formatting.format ("author: " % Formatting.text) (formatTrail $ outlineAuthor outline1)
-  Text.Lazy.IO.putStrLn $ Formatting.format ("contents count: " % Formatting.shown) (length $outlineContents outline1)
-  Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length $outlineActors outline1)
-  Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline1)
-  print $ renderOutline1 outline1 == hamletText
+  outline <- eitherToError $ parseOutline2 trails
+  Text.Lazy.IO.putStrLn $ Formatting.format ("title: " % Formatting.stext) ((\(Title t) -> t) $ outlineTitle outline)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("author: " % Formatting.text) (formatTrail $ outlineAuthor outline)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("contents count: " % Formatting.shown) (length $outlineContents outline)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length $outlineActors outline)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
 
-  mapM_ (Text.Lazy.IO.putStrLn . formatTrail) (filter ((> 0) . trailBlankLines) $ outlineContents outline1)
+  mapM_ (Text.Lazy.IO.putStrLn . formatTrail) (filter ((> 0) . trailBlankLines) $ outlineContents outline)
 
 formatLine :: Line -> Text.Lazy.Text
 formatLine (Line (LineNumber n) t) = Formatting.format (Formatting.right 5 ' ' % Formatting.stext) n t
@@ -45,14 +46,46 @@ data OutlineV a b c d e = Outline
   , outlineActs :: e
   } deriving Show
 
-type Outline1 = OutlineV Trail Trail [Trail] [Trail] [[Trail]]
+outlineTitleLens :: forall a a' b c d e f. Functor f => (a -> f a') -> OutlineV a b c d e -> f (OutlineV a' b c d e)
+outlineTitleLens f (Outline a b c d e) = fmap (\a' -> Outline a' b c d e) (f a)
 
-data OutlineError
+type Outline1 = OutlineV Trail Trail [Trail] [Trail] [[Trail]]
+type Outline2 = OutlineV Title Trail [Trail] [Trail] [[Trail]]
+
+data OutlineTrailError
   = OutlineNoTitle
   | OutlineNoAuthor
   deriving Show
 
-parseOutline1 :: [Trail] -> Either OutlineError Outline1
+newtype Title = Title Text
+
+data TitleError = TitleInvalidBlankLines Int deriving Show
+
+data AllError
+  = AllErrorOutlineTrail OutlineTrailError
+  | AllErrorTitle TitleError
+  deriving Show
+
+parseOutline2 :: [Trail] -> Either AllError Outline2
+parseOutline2 input = do
+  outline1 <- Lens.over Lens._Left AllErrorOutlineTrail $
+    parseOutline1 input
+  Lens.over Lens._Left AllErrorTitle $
+    outlineTitleLens parseTitle outline1
+
+parseTitle :: Trail -> Either TitleError Title
+parseTitle (Trail (Line _ t) c) =
+  if c == titleBlankLineCount
+    then Right $ Title t
+    else Left $ TitleInvalidBlankLines c
+
+titleBlankLineCount :: Int
+titleBlankLineCount = 3
+
+renderTitle :: Title -> Text
+renderTitle (Title t) = Text.concat $ t : makeBlankLines titleBlankLineCount
+
+parseOutline1 :: [Trail] -> Either OutlineTrailError Outline1
 parseOutline1 input = do
   (title, afterTitle) <-
     case input of
@@ -87,7 +120,10 @@ renderTrails :: [Trail] -> Text
 renderTrails = Text.intercalate "\n" . fmap renderTrail
 
 renderTrail :: Trail -> Text
-renderTrail (Trail (Line _ text) blanks) = Text.concat $ text : replicate blanks "\n"
+renderTrail (Trail (Line _ text) blanks) = Text.concat $ text : makeBlankLines blanks
+
+makeBlankLines :: Int -> [Text]
+makeBlankLines blanks = replicate blanks "\n"
 
 parseActsTrail :: [Trail] -> [[Trail]]
 parseActsTrail [] = []
