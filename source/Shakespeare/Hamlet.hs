@@ -74,8 +74,8 @@ renderOutline1 (Outline title author contents actors acts) =
     , renderTrail author
     , renderTrails contents
     , renderTrails actors
+    , Text.intercalate "\n" $ fmap renderTrails acts
     ]
-    ++ fmap renderTrails acts
 
 mapAppendEndline :: [Text] -> Text
 mapAppendEndline = Text.concat . fmap (flip Text.append "\n")
