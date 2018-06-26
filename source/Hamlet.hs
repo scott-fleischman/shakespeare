@@ -17,13 +17,80 @@ main = do
   trails <- eitherToError . getTrails $ lines
   let
     trailsWithTails = filter ((> 1) . trailBlankLines) trails
-    displayLine (Line (LineNumber n) t) = Formatting.format (Formatting.right 5 ' ' % Formatting.stext) n t
-    displayTrail (Trail l c) = Formatting.format (Formatting.right 5 ' ' % Formatting.text) c (displayLine l)
-  mapM_ (Text.Lazy.IO.putStrLn . displayTrail) trailsWithTails
+    formatLine (Line (LineNumber n) t) = Formatting.format (Formatting.right 5 ' ' % Formatting.stext) n t
+    formatTrail (Trail l c) = Formatting.format (Formatting.right 5 ' ' % Formatting.text) c (formatLine l)
+  mapM_ (Text.Lazy.IO.putStrLn . formatTrail) trailsWithTails
+
+  outline <- eitherToError $ parseOutline trails
+  Text.Lazy.IO.putStrLn $ Formatting.format ("title: " % Formatting.text) (formatTrail $ outlineTitle outline)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("author: " % Formatting.text) (formatTrail $ outlineAuthor outline)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("contents count: " % Formatting.shown) (length $outlineContents outline)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length $outlineActors outline)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
+  print $ renderOutline outline == hamletText
 
 eitherToError :: Show a => Either a b -> IO b
 eitherToError (Left err) = fail . show $ err
 eitherToError (Right x) = return x
+
+data Outline = Outline
+  { outlineTitle :: Trail
+  , outlineAuthor :: Trail
+  , outlineContents :: [Trail]
+  , outlineActors :: [Trail]
+  , outlineActs :: [[Trail]]
+  } deriving Show
+
+data OutlineError
+  = OutlineNoTitle
+  | OutlineNoAuthor
+  deriving Show
+
+parseOutline :: [Trail] -> Either OutlineError Outline
+parseOutline input = do
+  (title, afterTitle) <-
+    case input of
+      [] -> Left OutlineNoTitle
+      x : xs -> Right (x, xs)
+  (author, afterAuthor) <-
+    case afterTitle of
+      [] -> Left OutlineNoAuthor
+      x : xs -> Right (x, xs)
+  let (contents, afterContents) = takeWhileExtraSplit ((<= 1) . trailBlankLines) afterAuthor
+  let (actors, afterActors) = takeWhileExtraSplit ((<= 1) . trailBlankLines) afterContents
+  let acts = parseActs afterActors
+  Right $ Outline title author contents actors acts
+
+renderOutline :: Outline -> Text
+renderOutline (Outline title author contents actors acts) =
+  Text.concat $
+    fmap (flip Text.append endline) $
+      [ renderTrail title
+      , renderTrail author
+      ]
+      ++ fmap renderTrail contents
+      ++ fmap renderTrail actors
+      ++ fmap (Text.intercalate endline . fmap renderTrail) acts
+  where
+  endline = "\n"
+
+renderTrail :: Trail -> Text
+renderTrail (Trail (Line _ text) blanks) = Text.concat $ text : replicate blanks "\n"
+
+parseActs :: [Trail] -> [[Trail]]
+parseActs [] = []
+parseActs input@(_ : _) =
+  let (current, after) = takeWhileExtraSplit ((<= 1) . trailBlankLines) input
+  in case after of
+    [] -> [current]
+    xs@(_ : _) -> let results = parseActs xs in current : results
+
+takeWhileExtraSplit :: (a -> Bool) -> [a] -> ([a], [a])
+takeWhileExtraSplit _ [] = ([], [])
+takeWhileExtraSplit f (x : xs) =
+  if f x
+    then let (r1, r2) = takeWhileExtraSplit f xs in (x : r1, r2)
+    else ([x], xs)
 
 data Line = Line
   { lineNumber :: LineNumber
