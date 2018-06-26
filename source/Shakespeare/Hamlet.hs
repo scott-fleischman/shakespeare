@@ -54,6 +54,7 @@ outlineAuthorLens f (Outline a b c d e) = fmap (\b' -> Outline a b' c d e) (f b)
 
 type Outline1 = OutlineV Trail Trail  [Trail] [Trail] [[Trail]]
 type Outline2 = OutlineV Title Author [Trail] [Trail] [[Trail]]
+type OutlineRenderer t a b c d e = OutlineV (a -> t) (b -> t) (c -> t) (d -> t) (e -> t)
 
 data OutlineTrailError
   = OutlineNoTitle
@@ -135,7 +136,7 @@ parseOutline1 input = do
   Right $ Outline title author contents actors acts
 
 renderOutlineV
-  :: OutlineV (a -> Text) (b -> Text) (c -> Text) (d -> Text) (e -> Text)
+  :: OutlineRenderer Text a b c d e
   -> OutlineV a b c d e
   -> Text
 renderOutlineV (Outline fa fb fc fd fe) (Outline a b c d e) =
@@ -147,12 +148,7 @@ renderOutlineV (Outline fa fb fc fd fe) (Outline a b c d e) =
     , fe e
     ]
 
-outline1Renderer :: OutlineV
-  (Trail      -> Text)
-  (Trail      -> Text)
-  ([Trail]    -> Text)
-  ([Trail]    -> Text)
-  ([[Trail]]  -> Text)
+outline1Renderer :: OutlineRenderer Text Trail Trail [Trail] [Trail] [[Trail]]
 outline1Renderer =
   Outline
     renderTrail
@@ -161,12 +157,7 @@ outline1Renderer =
     renderTrails
     (Text.intercalate endline . fmap renderTrails)
 
-outline2Renderer :: OutlineV
-  (Title      -> Text)
-  (Author     -> Text)
-  ([Trail]    -> Text)
-  ([Trail]    -> Text)
-  ([[Trail]]  -> Text)
+outline2Renderer :: OutlineRenderer Text Title Author [Trail] [Trail] [[Trail]]
 outline2Renderer = outline1Renderer
   { outlineTitle = renderTitle
   , outlineAuthor = renderAuthor
