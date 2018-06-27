@@ -4,6 +4,7 @@
 module Shakespeare.Hamlet where
 
 import qualified Control.Lens as Lens
+import qualified Data.Char as Char
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Text.Lazy
@@ -23,6 +24,12 @@ main = do
   Text.Lazy.IO.putStrLn $ Formatting.format ("content acts count: " % Formatting.shown) (length . (\(Contents acts) -> acts) $ outlineContents outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length . (\(Actors actors _) -> actors) $ outlineActors outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
+
+  mapM_ (Text.Lazy.IO.putStrLn . formatActor) $ (\(Actors actors _) -> actors) $ outlineActors outline
+
+formatActor :: Actor -> Text.Lazy.Text
+formatActor (ActorMajor (ActorLabel label) t) = Formatting.format (Formatting.right 13 ' ' % Formatting.stext % " ") label (renderTrail t)
+formatActor (ActorMinor t)                    = Formatting.format (Formatting.right 13 ' ' % Formatting.stext % " ") ("(minor)" :: Text) (renderTrail t)
 
 formatLine :: Line -> Text.Lazy.Text
 formatLine (Line (LineNumber n) t) = Formatting.format (Formatting.right 5 ' ' % Formatting.stext) n t
@@ -95,9 +102,11 @@ data Actors = Actors
   , actorsScene :: Trail
   }
 
-data Actor = Actor
-  { actorTrail :: Trail
-  }
+newtype ActorLabel = ActorLabel Text
+
+data Actor
+  = ActorMajor ActorLabel Trail
+  | ActorMinor Trail
 
 data ActorsError
   = EmptyActors
@@ -118,13 +127,29 @@ parseActors input = do
 
   let
     (actorTrails, lastTrails) = takeWhileExtraSplit ((== 0) . trailBlankLines) afterHeader
-    actors = fmap Actor actorTrails
+    actors = fmap parseActor actorTrails
   scene <-
     case lastTrails of
       [] -> Left MissingSceneAfterActors
       [x] -> Right x
       xs -> Left $ TooManyScenesAfterActors xs
   Right $ Actors actors scene
+
+parseActor :: Trail -> Actor
+parseActor trail@(Trail (Line _ text) _) =
+  case tryExtractActorLabel text of
+    Nothing -> ActorMinor trail
+    Just label -> ActorMajor label trail
+
+tryExtractActorLabel :: Text -> Maybe ActorLabel
+tryExtractActorLabel t
+  | [label]
+    <- filter ((>1) . Text.length)
+    . filter (Text.all Char.isUpper)
+    . fmap (Text.filter (/= ','))
+    $ Text.words t
+  = Just $ ActorLabel label
+tryExtractActorLabel _ = Nothing
 
 actorsHeaderText :: Text
 actorsHeaderText = "Dramatis Personæ"
@@ -138,7 +163,8 @@ renderActors (Actors actors scene) =
     ]
 
 renderActor :: Actor -> Text
-renderActor (Actor t) = renderTrail t
+renderActor (ActorMajor _ t) = renderTrail t
+renderActor (ActorMinor t) = renderTrail t
 
 data ContentsError
   = EmptyContents
