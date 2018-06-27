@@ -3,7 +3,7 @@
 
 module Shakespeare.Hamlet where
 
-import qualified Control.Lens as Lens
+import           Control.Monad ((>=>))
 import qualified Data.Char as Char
 import           Data.Text (Text)
 import qualified Data.Text as Text
@@ -92,13 +92,16 @@ data AllError
   deriving Show
 
 parseFull :: Text -> Either AllError Outline2
-parseFull input
-  =  (Lens.over Lens._Left AllErrorInitialBlankLine . getTrails . getTextLines $ input)
-  >>= Lens.over Lens._Left AllErrorOutlineTrail     . parseOutline1
-  >>= Lens.over Lens._Left AllErrorTitle            . outlineTitleLens parseTitle
-  >>= Lens.over Lens._Left AllErrorAuthor           . outlineAuthorLens parseAuthor
-  >>= Lens.over Lens._Left AllErrorContents         . outlineContentsLens parseContents
-  >>= Lens.over Lens._Left AllErrorActors           . outlineActorsLens parseActors
+parseFull
+  =   overLeft AllErrorInitialBlankLine . getTrails . getTextLines
+  >=> overLeft AllErrorOutlineTrail     . parseOutline1
+  >=> overLeft AllErrorTitle            . outlineTitleLens parseTitle
+  >=> overLeft AllErrorAuthor           . outlineAuthorLens parseAuthor
+  >=> overLeft AllErrorContents         . outlineContentsLens parseContents
+  >=> overLeft AllErrorActors           . outlineActorsLens parseActors
+  where
+  overLeft f (Left x)   = Left (f x)
+  overLeft _ (Right x)  = Right x
 
 data Act = Act
   { actTrail :: Trail
