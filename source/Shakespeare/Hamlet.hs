@@ -20,11 +20,9 @@ main = do
   outline <- eitherToError $ parseFull hamletText
   Text.Lazy.IO.putStrLn $ Formatting.format ("title: " % Formatting.stext) ((\(Title t) -> t) $ outlineTitle outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("author: " % Formatting.stext) ((\(Author t) -> t) $ outlineAuthor outline)
-  Text.Lazy.IO.putStrLn $ Formatting.format ("contents count: " % Formatting.shown) (length $outlineContents outline)
-  Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length $outlineActors outline)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("content acts count: " % Formatting.shown) (length . (\(Contents acts) -> acts) $ outlineContents outline)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length $ outlineActors outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
-
-  mapM_ (Text.Lazy.IO.putStrLn . formatTrail) (filter ((> 0) . trailBlankLines) $ outlineContents outline)
 
 formatLine :: Line -> Text.Lazy.Text
 formatLine (Line (LineNumber n) t) = Formatting.format (Formatting.right 5 ' ' % Formatting.stext) n t
@@ -50,8 +48,11 @@ outlineTitleLens f (Outline a b c d e) = fmap (\a' -> Outline a' b c d e) (f a)
 outlineAuthorLens :: forall a b b' c d e f. Functor f => (b -> f b') -> OutlineV a b c d e -> f (OutlineV a b' c d e)
 outlineAuthorLens f (Outline a b c d e) = fmap (\b' -> Outline a b' c d e) (f b)
 
-type Outline1 = OutlineV Trail Trail  [Trail] [Trail] [[Trail]]
-type Outline2 = OutlineV Title Author [Trail] [Trail] [[Trail]]
+outlineContentsLens :: forall a b c c' d e f. Functor f => (c -> f c') -> OutlineV a b c d e -> f (OutlineV a b c' d e)
+outlineContentsLens f (Outline a b c d e) = fmap (\c' -> Outline a b c' d e) (f c)
+
+type Outline1 = OutlineV Trail Trail  [Trail]  [Trail] [[Trail]]
+type Outline2 = OutlineV Title Author Contents [Trail] [[Trail]]
 type OutlineRenderer t a b c d e = OutlineV (a -> t) (b -> t) (c -> t) (d -> t) (e -> t)
 
 data OutlineTrailError
@@ -73,6 +74,7 @@ data AllError
   | AllErrorOutlineTrail      OutlineTrailError
   | AllErrorTitle             TitleError
   | AllErrorAuthor            AuthorError
+  | AllErrorContents          ContentsError
   deriving Show
 
 parseFull :: Text -> Either AllError Outline2
@@ -81,6 +83,39 @@ parseFull input
   >>= Lens.over Lens._Left AllErrorOutlineTrail     . parseOutline1
   >>= Lens.over Lens._Left AllErrorTitle            . outlineTitleLens parseTitle
   >>= Lens.over Lens._Left AllErrorAuthor           . outlineAuthorLens parseAuthor
+  >>= Lens.over Lens._Left AllErrorContents         . outlineContentsLens parseContents
+
+data ContentsError
+  = EmptyContents
+  | InvalidContentsHeader Trail
+  deriving Show
+
+newtype Contents = Contents [ContentsAct]
+newtype ContentsAct = ContentsAct [Trail]
+
+parseContents :: [Trail] -> Either ContentsError Contents
+parseContents input = do
+  (header, afterHeader) <-
+    case input of
+      [] -> Left EmptyContents
+      x : xs -> Right (x, xs)
+
+  case header of
+    Trail (Line _ "Contents") 1 -> Right ()
+    t -> Left $ InvalidContentsHeader t
+
+  let acts = fmap ContentsAct $ repeatTakeWhileExtraSplit ((== 0) . trailBlankLines) afterHeader
+  Right $ Contents acts
+
+renderContents :: Contents -> Text
+renderContents (Contents acts) =
+  Text.concat
+    [ "Contents\n\n"
+    , Text.intercalate "\n" (fmap renderContentsAct acts)
+    ]
+
+renderContentsAct :: ContentsAct -> Text
+renderContentsAct (ContentsAct trails) = renderTrails trails
 
 parseAuthor :: Trail -> Either AuthorError Author
 parseAuthor (Trail (Line _ t) c) = do
@@ -153,10 +188,11 @@ outline1Renderer =
     renderTrails
     (Text.intercalate endline . fmap renderTrails)
 
-fullRenderer :: OutlineRenderer Text Title Author [Trail] [Trail] [[Trail]]
+fullRenderer :: OutlineRenderer Text Title Author Contents [Trail] [[Trail]]
 fullRenderer = outline1Renderer
   { outlineTitle = renderTitle
   , outlineAuthor = renderAuthor
+  , outlineContents = renderContents
   }
 
 endline :: Text
@@ -178,12 +214,15 @@ makeBlankLines :: Int -> Text
 makeBlankLines blanks = Text.replicate blanks endline
 
 parseActsTrail :: [Trail] -> [[Trail]]
-parseActsTrail [] = []
-parseActsTrail input@(_ : _) =
-  let (current, after) = takeWhileExtraSplit ((<= 1) . trailBlankLines) input
+parseActsTrail = repeatTakeWhileExtraSplit ((<= 1) . trailBlankLines)
+
+repeatTakeWhileExtraSplit :: (a -> Bool) -> [a] -> [[a]]
+repeatTakeWhileExtraSplit _ [] = []
+repeatTakeWhileExtraSplit f input@(_ : _) =
+  let (current, after) = takeWhileExtraSplit f input
   in case after of
     [] -> [current]
-    xs@(_ : _) -> let results = parseActsTrail xs in current : results
+    xs@(_ : _) -> let results = repeatTakeWhileExtraSplit f xs in current : results
 
 takeWhileExtraSplit :: (a -> Bool) -> [a] -> ([a], [a])
 takeWhileExtraSplit _ [] = ([], [])
