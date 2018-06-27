@@ -21,27 +21,36 @@ prop_parseRender =
 prop_takeWhileExtraSplit_examples :: Hedgehog.Property
 prop_takeWhileExtraSplit_examples =
   Hedgehog.withTests 1 . Hedgehog.property $ do
+    -- basic idea
+    Shakespeare.Hamlet.takeWhileExtraSplit Char.isLower "abcDefghI" === ("abcD", "efghI")
+
+    -- edge cases
     Shakespeare.Hamlet.takeWhileExtraSplit Char.isLower "" === ("", "")
     Shakespeare.Hamlet.takeWhileExtraSplit Char.isLower "abc" === ("abc", "")
     Shakespeare.Hamlet.takeWhileExtraSplit Char.isLower "abcD" === ("abcD", "")
-    Shakespeare.Hamlet.takeWhileExtraSplit Char.isLower "abcDefghI" === ("abcD", "efghI")
     Shakespeare.Hamlet.takeWhileExtraSplit Char.isLower "Abc" === ("A", "bc")
 
 prop_takeFirstUntil_examples :: Hedgehog.Property
 prop_takeFirstUntil_examples =
   Hedgehog.withTests 1 . Hedgehog.property $ do
+    -- basic idea
+    Shakespeare.Hamlet.takeFirstUntil Char.isUpper "AbcDef" === ("Abc", "Def")
+
+    -- edge cases
     Shakespeare.Hamlet.takeFirstUntil Char.isUpper "" === ("", "")
     Shakespeare.Hamlet.takeFirstUntil Char.isUpper "A" === ("A", "")
     Shakespeare.Hamlet.takeFirstUntil Char.isUpper "Abc" === ("Abc", "")
-    Shakespeare.Hamlet.takeFirstUntil Char.isUpper "AbcDef" === ("Abc", "Def")
     Shakespeare.Hamlet.takeFirstUntil Char.isUpper "qAbcDef" === ("", "qAbcDef")
 
 prop_takeWhileSplit_examples :: Hedgehog.Property
 prop_takeWhileSplit_examples =
   Hedgehog.withTests 1 . Hedgehog.property $ do
+    -- basic idea
+    Shakespeare.Hamlet.takeWhileSplit Char.isLower "abcDef" === ("abc", "Def")
+
+    -- edge cases
     Shakespeare.Hamlet.takeWhileSplit Char.isLower "" === ("", "")
     Shakespeare.Hamlet.takeWhileSplit Char.isLower "abc" === ("abc", "")
-    Shakespeare.Hamlet.takeWhileSplit Char.isLower "abcDef" === ("abc", "Def")
     Shakespeare.Hamlet.takeWhileSplit Char.isLower "AbcDef" === ("", "AbcDef")
 
 linesShouldEqual :: Text.Text -> Text.Text -> Hedgehog.PropertyT IO ()
