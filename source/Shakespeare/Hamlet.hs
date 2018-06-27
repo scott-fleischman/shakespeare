@@ -100,6 +100,25 @@ parseFull input
   >>= Lens.over Lens._Left AllErrorContents         . outlineContentsLens parseContents
   >>= Lens.over Lens._Left AllErrorActors           . outlineActorsLens parseActors
 
+data Act = Act
+  { actTrail :: Trail
+  , actScenes :: [Scene]
+  }
+
+data Scene = Scene
+  { sceneTrail :: Trail
+  , sceneItems :: [SceneItem]
+  }
+
+data SceneItem
+  = SceneNote Trail
+  | SceneDialog Dialog
+
+data Dialog = Dialog
+  { dialogActorLabel :: ActorLabel
+  , dialogLines :: [Trail]
+  }
+
 data Actors = Actors
   { actorsList :: [Actor]
   , actorsScene :: Trail
