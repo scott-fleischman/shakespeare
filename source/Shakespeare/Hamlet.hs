@@ -13,6 +13,7 @@ import qualified Data.Text.Lazy.IO as Text.Lazy.IO
 import           Formatting ((%))
 import qualified Formatting
 import           Prelude hiding (lines)
+import qualified Text.Numeral.Roman
 
 main :: IO ()
 main = do
@@ -65,7 +66,7 @@ outlineActsLens     :: forall a b c d e e' f. Functor f => (e -> f e') -> Outlin
 outlineActsLens     f (Outline a b c d e) = fmap (\e' -> Outline a b c d e') (f e)
 
 type Outline1 = OutlineV Trail Trail  [Trail]  [Trail] [[Trail]]
-type Outline2 = OutlineV Title Author Contents Actors  [[Trail]]
+type Outline2 = OutlineV Title Author Contents Actors  [Act]
 type OutlineRenderer t a b c d e = OutlineV (a -> t) (b -> t) (c -> t) (d -> t) (e -> t)
 
 data OutlineTrailError
@@ -89,6 +90,7 @@ data AllError
   | AllErrorAuthor            AuthorError
   | AllErrorContents          ContentsError
   | AllErrorActors            ActorsError
+  | AllErrorAct               ActError
   deriving Show
 
 parseFull :: Text -> Either AllError Outline2
@@ -99,19 +101,64 @@ parseFull
   >=> overLeft AllErrorAuthor           . outlineAuthorLens parseAuthor
   >=> overLeft AllErrorContents         . outlineContentsLens parseContents
   >=> overLeft AllErrorActors           . outlineActorsLens parseActors
+  >=> overLeft AllErrorAct              . outlineActsLens parseActs
   where
   overLeft f (Left x)   = Left (f x)
   overLeft _ (Right x)  = Right x
 
+data ActError
+  = MissingActHeader
+  | InvalidActHeader Trail
+  | InvalidActNumber Trail
+  deriving Show
+
+parseActs :: [[Trail]] -> Either ActError [Act]
+parseActs = traverse parseAct
+
+actHeaderText :: Text
+actHeaderText = "ACT"
+
+parseAct :: [Trail] -> Either ActError Act
+parseAct input = do
+  (headerTrail, afterHeader) <-
+    case input of
+      [] -> Left MissingActHeader
+      x : xs -> Right (x, xs)
+  numberText <-
+    case Text.stripPrefix (Text.append actHeaderText " ") (lineText . trailLine $ headerTrail) of
+      Nothing -> Left $ InvalidActHeader headerTrail
+      Just x -> Right x
+  numberValue <-
+    case Text.Numeral.Roman.fromRoman numberText of
+      Nothing -> Left $ InvalidActNumber headerTrail
+      Just x -> Right x
+  let scenes = [Scene afterHeader]
+  Right $ Act numberValue scenes
+
+renderActs :: [Act] -> Text
+renderActs = Text.intercalate "\n" . fmap renderAct
+
+renderAct :: Act -> Text
+renderAct (Act n s) = Text.concat
+  [ actHeaderText
+  , " "
+  , Text.Numeral.Roman.toRoman n
+  , "\n\n"
+  , Text.intercalate "\n " (fmap renderScene s)
+  ]
+
+renderScene :: Scene -> Text
+renderScene (Scene t) = renderTrails t
+
 data Act = Act
-  { actTrail :: Trail
+  { actNumber :: Int
   , actScenes :: [Scene]
   }
 
-data Scene = Scene
-  { sceneTrail :: Trail
-  , sceneItems :: [SceneItem]
-  }
+data Scene = Scene [Trail]
+  -- { sceneTrail :: Trail
+  -- , sceneItems :: [SceneItem]
+  -- }
 
 data SceneItem
   = SceneNote Trail
@@ -294,12 +341,13 @@ outline1Renderer =
     renderTrails
     (Text.intercalate endline . fmap renderTrails)
 
-fullRenderer :: OutlineRenderer Text Title Author Contents Actors [[Trail]]
+fullRenderer :: OutlineRenderer Text Title Author Contents Actors [Act]
 fullRenderer = outline1Renderer
   { outlineTitle = renderTitle
   , outlineAuthor = renderAuthor
   , outlineContents = renderContents
   , outlineActors = renderActors
+  , outlineActs = renderActs
   }
 
 endline :: Text

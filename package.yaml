@@ -6,6 +6,7 @@ dependencies:
 - containers
 - formatting
 - lens
+- roman-numerals
 - text
 
 ghc-options:

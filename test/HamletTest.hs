@@ -30,7 +30,10 @@ linesShouldEqual actualText expectedText = do
     notBoth (Algorithm.Diff.Both _ _) = False
     notBoth _ = True
 
-    diff = filter notBoth diffRaw
+    diff
+      = take 30
+      . filter notBoth
+      $ diffRaw
   case diff of
     [] -> return ()
     _ : _ -> do
