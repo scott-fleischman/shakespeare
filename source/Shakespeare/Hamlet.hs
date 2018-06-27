@@ -102,7 +102,7 @@ data Actors = Actors
   , actorsScene :: Trail
   }
 
-newtype ActorLabel = ActorLabel Text
+newtype ActorLabel = ActorLabel Text deriving (Eq, Ord)
 
 data Actor
   = ActorMajor ActorLabel Trail
