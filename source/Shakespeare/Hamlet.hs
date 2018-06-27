@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Shakespeare.Hamlet where
 
@@ -102,15 +103,17 @@ parseFull
   >=> overLeft AllErrorContents         . outlineContentsLens parseContents
   >=> overLeft AllErrorActors           . outlineActorsLens parseActors
   >=> overLeft AllErrorAct              . outlineActsLens parseActs
-  where
-  overLeft f (Left x)   = Left (f x)
-  overLeft _ (Right x)  = Right x
+
+overLeft :: (a -> a') -> Either a b -> Either a' b
+overLeft f (Left x)   = Left (f x)
+overLeft _ (Right x)  = Right x
 
 data ActError
   = MissingActHeader
   | InvalidActHeaderPrefix Trail
   | InvalidActHeaderBlankLines Trail
   | InvalidActNumber Trail
+  | ActSceneError SceneError
   deriving Show
 
 parseActs :: [[Trail]] -> Either ActError [Act]
@@ -136,8 +139,19 @@ parseAct input = do
     case Text.Numeral.Roman.fromRoman numberText of
       Nothing -> Left $ InvalidActNumber headerTrail
       Just x -> Right x
-  let scenes = [Scene afterHeader]
+  let
+    sceneTrails :: [[Trail]]
+    sceneTrails = repeatSplit (takeFirstUntil isSceneHeader) afterHeader
+
+  scenes :: [Scene]
+    <- overLeft ActSceneError $ traverse parseScene sceneTrails
   Right $ Act numberValue scenes
+
+isSceneHeader :: Trail -> Bool
+isSceneHeader = Text.isPrefixOf (Text.append scenePrefixText " ") . lineText . trailLine
+
+scenePrefixText :: Text
+scenePrefixText = "SCENE"
 
 renderActs :: [Act] -> Text
 renderActs = Text.intercalate "\n" . fmap renderAct
@@ -148,21 +162,59 @@ renderAct (Act n s) = Text.concat
   , " "
   , Text.Numeral.Roman.toRoman n
   , "\n\n"
-  , Text.intercalate "\n " (fmap renderScene s)
+  , Text.intercalate "\n" (fmap renderScene s)
   ]
 
+data SceneError
+  = MissingSceneHeader
+  | MissingScenePrefix Trail
+  | InvalidSceneNumber Text Trail
+  | InvalidScenePunctutationAfterNumber Text Trail
+  deriving Show
+
+parseScene :: [Trail] -> Either SceneError Scene
+parseScene input = do
+  (headerTrail, afterHeader) <-
+    case input of
+      [] -> Left MissingSceneHeader
+      x : xs -> Right (x, xs)
+  numberRest <-
+    case Text.stripPrefix (Text.append scenePrefixText " ") (lineText . trailLine $ headerTrail) of
+      Nothing -> Left $ MissingScenePrefix headerTrail
+      Just x -> Right x
+  let (numberText, afterNumber) = Text.breakOn "." numberRest
+  number <-
+    case Text.Numeral.Roman.fromRoman numberText of
+      Nothing -> Left $ InvalidSceneNumber numberText headerTrail
+      Just x -> Right x
+  description <-
+    case Text.stripPrefix ". " afterNumber of
+      Nothing -> Left $ InvalidScenePunctutationAfterNumber afterNumber headerTrail
+      Just x -> return x
+  Right $ Scene number description afterHeader
+
 renderScene :: Scene -> Text
-renderScene (Scene t) = renderTrails t
+renderScene (Scene number description items) =
+  Text.concat
+    [ scenePrefixText
+    , " "
+    , Text.Numeral.Roman.toRoman number
+    , ". "
+    , description
+    , "\n\n"
+    , renderTrails items
+    ]
 
 data Act = Act
   { actNumber :: Int
   , actScenes :: [Scene]
   }
 
-data Scene = Scene [Trail]
-  -- { sceneTrail :: Trail
-  -- , sceneItems :: [SceneItem]
-  -- }
+data Scene = Scene
+  { sceneNumber :: Int
+  , sceneDescription :: Text
+  , sceneItems :: [Trail]
+  }
 
 data SceneItem
   = SceneNote Trail
