@@ -49,17 +49,20 @@ data OutlineV a b c d e = Outline
   , outlineActs :: e
   } deriving Show
 
-outlineTitleLens :: forall a a' b c d e f. Functor f => (a -> f a') -> OutlineV a b c d e -> f (OutlineV a' b c d e)
-outlineTitleLens f (Outline a b c d e) = fmap (\a' -> Outline a' b c d e) (f a)
+outlineTitleLens    :: forall a a' b c d e f. Functor f => (a -> f a') -> OutlineV a b c d e -> f (OutlineV a' b c d e)
+outlineTitleLens    f (Outline a b c d e) = fmap (\a' -> Outline a' b c d e) (f a)
 
-outlineAuthorLens :: forall a b b' c d e f. Functor f => (b -> f b') -> OutlineV a b c d e -> f (OutlineV a b' c d e)
-outlineAuthorLens f (Outline a b c d e) = fmap (\b' -> Outline a b' c d e) (f b)
+outlineAuthorLens   :: forall a b b' c d e f. Functor f => (b -> f b') -> OutlineV a b c d e -> f (OutlineV a b' c d e)
+outlineAuthorLens   f (Outline a b c d e) = fmap (\b' -> Outline a b' c d e) (f b)
 
 outlineContentsLens :: forall a b c c' d e f. Functor f => (c -> f c') -> OutlineV a b c d e -> f (OutlineV a b c' d e)
 outlineContentsLens f (Outline a b c d e) = fmap (\c' -> Outline a b c' d e) (f c)
 
-outlineActorsLens :: forall a b c d d' e f. Functor f => (d -> f d') -> OutlineV a b c d e -> f (OutlineV a b c d' e)
-outlineActorsLens f (Outline a b c d e) = fmap (\d' -> Outline a b c d' e) (f d)
+outlineActorsLens   :: forall a b c d d' e f. Functor f => (d -> f d') -> OutlineV a b c d e -> f (OutlineV a b c d' e)
+outlineActorsLens   f (Outline a b c d e) = fmap (\d' -> Outline a b c d' e) (f d)
+
+outlineActsLens     :: forall a b c d e e' f. Functor f => (e -> f e') -> OutlineV a b c d e -> f (OutlineV a b c d e')
+outlineActsLens     f (Outline a b c d e) = fmap (\e' -> Outline a b c d e') (f e)
 
 type Outline1 = OutlineV Trail Trail  [Trail]  [Trail] [[Trail]]
 type Outline2 = OutlineV Title Author Contents Actors  [[Trail]]
