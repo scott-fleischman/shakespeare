@@ -21,7 +21,7 @@ main = do
   Text.Lazy.IO.putStrLn $ Formatting.format ("title: " % Formatting.stext) ((\(Title t) -> t) $ outlineTitle outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("author: " % Formatting.stext) ((\(Author t) -> t) $ outlineAuthor outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("content acts count: " % Formatting.shown) (length . (\(Contents acts) -> acts) $ outlineContents outline)
-  Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length $ outlineActors outline)
+  Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length . (\(Actors actors _) -> actors) $ outlineActors outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
 
 formatLine :: Line -> Text.Lazy.Text
@@ -51,8 +51,11 @@ outlineAuthorLens f (Outline a b c d e) = fmap (\b' -> Outline a b' c d e) (f b)
 outlineContentsLens :: forall a b c c' d e f. Functor f => (c -> f c') -> OutlineV a b c d e -> f (OutlineV a b c' d e)
 outlineContentsLens f (Outline a b c d e) = fmap (\c' -> Outline a b c' d e) (f c)
 
+outlineActorsLens :: forall a b c d d' e f. Functor f => (d -> f d') -> OutlineV a b c d e -> f (OutlineV a b c d' e)
+outlineActorsLens f (Outline a b c d e) = fmap (\d' -> Outline a b c d' e) (f d)
+
 type Outline1 = OutlineV Trail Trail  [Trail]  [Trail] [[Trail]]
-type Outline2 = OutlineV Title Author Contents [Trail] [[Trail]]
+type Outline2 = OutlineV Title Author Contents Actors  [[Trail]]
 type OutlineRenderer t a b c d e = OutlineV (a -> t) (b -> t) (c -> t) (d -> t) (e -> t)
 
 data OutlineTrailError
@@ -75,6 +78,7 @@ data AllError
   | AllErrorTitle             TitleError
   | AllErrorAuthor            AuthorError
   | AllErrorContents          ContentsError
+  | AllErrorActors            ActorsError
   deriving Show
 
 parseFull :: Text -> Either AllError Outline2
@@ -84,6 +88,57 @@ parseFull input
   >>= Lens.over Lens._Left AllErrorTitle            . outlineTitleLens parseTitle
   >>= Lens.over Lens._Left AllErrorAuthor           . outlineAuthorLens parseAuthor
   >>= Lens.over Lens._Left AllErrorContents         . outlineContentsLens parseContents
+  >>= Lens.over Lens._Left AllErrorActors           . outlineActorsLens parseActors
+
+data Actors = Actors
+  { actorsList :: [Actor]
+  , actorsScene :: Trail
+  }
+
+data Actor = Actor
+  { actorTrail :: Trail
+  }
+
+data ActorsError
+  = EmptyActors
+  | InvalidActorHeader Trail
+  | MissingSceneAfterActors
+  | TooManyScenesAfterActors [Trail]
+  deriving Show
+
+parseActors :: [Trail] -> Either ActorsError Actors
+parseActors input = do
+  (header, afterHeader) <-
+    case input of
+      [] -> Left EmptyActors
+      x : xs -> Right (x, xs)
+  case header of
+    Trail (Line _ t) 1 | t == Text.append " " actorsHeaderText -> Right ()
+    t -> Left $ InvalidActorHeader t
+
+  let
+    (actorTrails, lastTrails) = takeWhileExtraSplit ((== 0) . trailBlankLines) afterHeader
+    actors = fmap Actor actorTrails
+  scene <-
+    case lastTrails of
+      [] -> Left MissingSceneAfterActors
+      [x] -> Right x
+      xs -> Left $ TooManyScenesAfterActors xs
+  Right $ Actors actors scene
+
+actorsHeaderText :: Text
+actorsHeaderText = "Dramatis Personæ"
+
+renderActors :: Actors -> Text
+renderActors (Actors actors scene) =
+  Text.intercalate "\n"
+    [ Text.concat [" ", actorsHeaderText, "\n"]
+    , Text.intercalate "\n" (fmap renderActor actors)
+    , renderTrail scene
+    ]
+
+renderActor :: Actor -> Text
+renderActor (Actor t) = renderTrail t
 
 data ContentsError
   = EmptyContents
@@ -188,11 +243,12 @@ outline1Renderer =
     renderTrails
     (Text.intercalate endline . fmap renderTrails)
 
-fullRenderer :: OutlineRenderer Text Title Author Contents [Trail] [[Trail]]
+fullRenderer :: OutlineRenderer Text Title Author Contents Actors [[Trail]]
 fullRenderer = outline1Renderer
   { outlineTitle = renderTitle
   , outlineAuthor = renderAuthor
   , outlineContents = renderContents
+  , outlineActors = renderActors
   }
 
 endline :: Text
