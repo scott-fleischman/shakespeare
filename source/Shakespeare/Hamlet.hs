@@ -108,7 +108,8 @@ parseFull
 
 data ActError
   = MissingActHeader
-  | InvalidActHeader Trail
+  | InvalidActHeaderPrefix Trail
+  | InvalidActHeaderBlankLines Trail
   | InvalidActNumber Trail
   deriving Show
 
@@ -126,8 +127,11 @@ parseAct input = do
       x : xs -> Right (x, xs)
   numberText <-
     case Text.stripPrefix (Text.append actHeaderText " ") (lineText . trailLine $ headerTrail) of
-      Nothing -> Left $ InvalidActHeader headerTrail
+      Nothing -> Left $ InvalidActHeaderPrefix headerTrail
       Just x -> Right x
+  if trailBlankLines headerTrail == 1
+    then Right ()
+    else Left $ InvalidActHeaderBlankLines headerTrail
   numberValue <-
     case Text.Numeral.Roman.fromRoman numberText of
       Nothing -> Left $ InvalidActNumber headerTrail
@@ -257,7 +261,7 @@ parseContents input = do
     Trail (Line _ "Contents") 1 -> Right ()
     t -> Left $ InvalidContentsHeader t
 
-  let acts = fmap ContentsAct $ repeatTakeWhileExtraSplit ((== 0) . trailBlankLines) afterHeader
+  let acts = fmap ContentsAct $ repeatSplit (takeWhileExtraSplit $ (== 0) . trailBlankLines) afterHeader
   Right $ Contents acts
 
 renderContents :: Contents -> Text
@@ -369,15 +373,15 @@ makeBlankLines :: Int -> Text
 makeBlankLines blanks = Text.replicate blanks endline
 
 parseActsTrail :: [Trail] -> [[Trail]]
-parseActsTrail = repeatTakeWhileExtraSplit ((<= 1) . trailBlankLines)
+parseActsTrail = repeatSplit $ takeWhileExtraSplit $ (<= 1) . trailBlankLines
 
-repeatTakeWhileExtraSplit :: (a -> Bool) -> [a] -> [[a]]
-repeatTakeWhileExtraSplit _ [] = []
-repeatTakeWhileExtraSplit f input@(_ : _) =
-  let (current, after) = takeWhileExtraSplit f input
+repeatSplit :: ([a] -> ([a], [a])) -> [a] -> [[a]]
+repeatSplit _ [] = []
+repeatSplit f input@(_ : _) =
+  let (current, after) = f input
   in case after of
     [] -> [current]
-    xs@(_ : _) -> let results = repeatTakeWhileExtraSplit f xs in current : results
+    xs@(_ : _) -> let results = repeatSplit f xs in current : results
 
 takeWhileExtraSplit :: (a -> Bool) -> [a] -> ([a], [a])
 takeWhileExtraSplit _ [] = ([], [])
@@ -385,6 +389,20 @@ takeWhileExtraSplit f (x : xs) =
   if f x
     then let (r1, r2) = takeWhileExtraSplit f xs in (x : r1, r2)
     else ([x], xs)
+
+takeFirstUntil :: (a -> Bool) -> [a] -> ([a], [a])
+takeFirstUntil _ [] = ([], [])
+takeFirstUntil f (x : xs) =
+  if f x
+    then let (r1, r2) = takeWhileSplit (not . f) xs in (x : r1, r2)
+    else ([], x : xs)
+
+takeWhileSplit :: (a -> Bool) -> [a] -> ([a], [a])
+takeWhileSplit _ [] = ([], [])
+takeWhileSplit f (x : xs) =
+  if f x
+    then let (r1, r2) = takeWhileSplit f xs in (x : r1, r2)
+    else ([], x : xs)
 
 data Line = Line
   { lineNumber :: LineNumber
