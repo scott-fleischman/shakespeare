@@ -27,7 +27,17 @@ main = do
   Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length . (\(Actors actors _) -> actors) $ outlineActors outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
 
-  mapM_ (Text.Lazy.IO.putStrLn . formatActor) $ (\(Actors actors _) -> actors) $ outlineActors outline
+  mapM_ (Text.Lazy.IO.putStrLn . formatAct) (outlineActs outline)
+
+formatAct :: Act -> Text.Lazy.Text
+formatAct (Act number scenes) = Formatting.format
+  ("Act " % Formatting.int % " : " % Formatting.int % " scenes\n" % Formatting.text)
+  number
+  (length scenes)
+  (Text.Lazy.concat . fmap (Formatting.format ("  " % Formatting.text % "\n") . formatScene) $ scenes)
+
+formatScene :: Scene -> Text.Lazy.Text
+formatScene (Scene number description _) = Formatting.format ("Scene " % Formatting.int % ". " % Formatting.stext) number description
 
 formatActor :: Actor -> Text.Lazy.Text
 formatActor (ActorMajor (ActorLabel label) t) = Formatting.format (Formatting.right 13 ' ' % Formatting.stext % " ") label (renderTrail t)
