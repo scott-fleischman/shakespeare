@@ -37,7 +37,12 @@ formatAct (Act number scenes) = Formatting.format
   (Text.Lazy.concat . fmap (Formatting.format ("  " % Formatting.text % "\n") . formatScene) $ scenes)
 
 formatScene :: Scene -> Text.Lazy.Text
-formatScene (Scene number description _) = Formatting.format ("Scene " % Formatting.int % ". " % Formatting.stext) number description
+formatScene (Scene number description items) =
+  Formatting.format
+    ("Scene " % Formatting.int % ". " % Formatting.stext % "\n  " % Formatting.text)
+    number
+    description
+    (Text.Lazy.intercalate "\n" $ fmap (Formatting.format ("  " % Formatting.shown)) $ take 5 items)
 
 formatActor :: Actor -> Text.Lazy.Text
 formatActor (ActorMajor (ActorLabel label) t) = Formatting.format (Formatting.right 13 ' ' % Formatting.stext % " ") label (renderTrail t)
@@ -180,6 +185,7 @@ data SceneError
   | MissingScenePrefix Trail
   | InvalidSceneNumber Text Trail
   | InvalidScenePunctutationAfterNumber Text Trail
+  | SceneErrorItem SceneItemError
   deriving Show
 
 parseScene :: [Trail] -> Either SceneError Scene
@@ -201,7 +207,10 @@ parseScene input = do
     case Text.stripPrefix ". " afterNumber of
       Nothing -> Left $ InvalidScenePunctutationAfterNumber afterNumber headerTrail
       Just x -> return x
-  Right $ Scene number description afterHeader
+  let sceneItemTrails = repeatSplit (takeWhileExtraSplit ((== 0) . trailBlankLines)) afterHeader
+  items <-
+    overLeft SceneErrorItem $ traverse parseSceneItem sceneItemTrails
+  Right $ Scene number description items
 
 renderScene :: Scene -> Text
 renderScene (Scene number description items) =
@@ -212,8 +221,34 @@ renderScene (Scene number description items) =
     , ". "
     , description
     , "\n\n"
-    , renderTrails items
+    , Text.intercalate "\n" $ fmap renderSceneItem items
     ]
+
+data SceneItemError
+  = EmptySceneItem
+  | InvalidSingletonSceneItem Trail
+  deriving Show
+
+parseSceneItem :: [Trail] -> Either SceneItemError SceneItem
+parseSceneItem [] = Left EmptySceneItem
+parseSceneItem (single : []) =
+  let line = (lineText . trailLine) single
+  in case Text.stripPrefix " " line of
+    Nothing -> Right $ SceneUnnamedDialog [single]
+    Just _ -> Right $ SceneNote [single]
+parseSceneItem (initial : rest) =
+  let initialText = lineText . trailLine $ initial
+  in if Text.all (\x -> Char.isUpper x || x == '.' || Char.isSpace x) initialText
+    then
+      if Text.isPrefixOf " " initialText
+        then Right $ SceneNote (initial : rest)
+        else Right $ SceneNamedDialog initial rest
+    else Right $ SceneUnnamedDialog (initial : rest)
+
+renderSceneItem :: SceneItem -> Text
+renderSceneItem (SceneNote note) = renderTrails note
+renderSceneItem (SceneUnnamedDialog lines) = renderTrails lines
+renderSceneItem (SceneNamedDialog actor lines) = renderTrails (actor : lines)
 
 data Act = Act
   { actNumber :: Int
@@ -223,12 +258,14 @@ data Act = Act
 data Scene = Scene
   { sceneNumber :: Int
   , sceneDescription :: Text
-  , sceneItems :: [Trail]
+  , sceneItems :: [SceneItem]
   }
 
 data SceneItem
-  = SceneNote Trail
-  | SceneDialog Dialog
+  = SceneNote [Trail]
+  | SceneNamedDialog Trail [Trail]
+  | SceneUnnamedDialog [Trail]
+  deriving Show
 
 data Dialog = Dialog
   { dialogActorLabel :: ActorLabel
