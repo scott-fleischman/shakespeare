@@ -49,6 +49,30 @@ writeDialogDebugFiles outline = do
     formattedUnnamedDialog = Text.Lazy.unlines $ formatTrails unnamedDialog
   Text.Lazy.IO.writeFile "hamlet-dialog-unnamed.txt" formattedUnnamedDialog
 
+  let
+    namedDialog = getSceneNamedDialog acts
+    namedDialogPunctuation =
+      filter
+        (any
+          ( not
+          . Text.all
+            (\c
+              -> Char.isLetter c
+              || Char.isSpace c
+              || c == '‘' || c == '’'
+              || c == '.' || c == '?' || c == '!'
+              || c == ',' || c == ';' || c == ':'
+              || c == '—' || c == '-'
+              || c == '_'
+            )
+          . lineText
+          . trailLine
+          )
+        )
+        namedDialog
+    formattedNamedDialog = Text.Lazy.unlines $ formatTrails namedDialogPunctuation
+  Text.Lazy.IO.writeFile "hamlet-dialog-named-punctuation.txt" formattedNamedDialog
+
 getNamedDialogNames :: [Act] -> [Text]
 getNamedDialogNames = Set.toList . Set.fromList . fmap lineText . getCharacterHeadings
 
@@ -60,6 +84,9 @@ getSceneNotes = Maybe.catMaybes . fmap tryGetSceneNote . flattenSceneItems
 
 getSceneUnnamedDialog :: [Act] -> [[Trail]]
 getSceneUnnamedDialog = Maybe.catMaybes . fmap tryGetSceneUnnamedDialog . flattenSceneItems
+
+getSceneNamedDialog :: [Act] -> [[Trail]]
+getSceneNamedDialog = Maybe.catMaybes . fmap tryGetSceneNamedDialog . flattenSceneItems
 
 formatTrails :: [[Trail]] -> [Text.Lazy.Text]
 formatTrails = fmap (flip Text.Lazy.append "\n" . Text.Lazy.intercalate "\n" . fmap (formatLine . trailLine))
@@ -78,6 +105,10 @@ tryGetSceneDialogActor _ = Nothing
 tryGetSceneUnnamedDialog :: SceneItem -> Maybe [Trail]
 tryGetSceneUnnamedDialog (SceneUnnamedDialog x) = Just x
 tryGetSceneUnnamedDialog _ = Nothing
+
+tryGetSceneNamedDialog :: SceneItem -> Maybe [Trail]
+tryGetSceneNamedDialog (SceneNamedDialog _ x) = Just x
+tryGetSceneNamedDialog _ = Nothing
 
 formatAct :: Act -> Text.Lazy.Text
 formatAct (Act number scenes) = Formatting.format
