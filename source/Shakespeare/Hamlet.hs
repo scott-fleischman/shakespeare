@@ -7,6 +7,7 @@ module Shakespeare.Hamlet where
 import           Control.Monad ((>=>))
 import qualified Data.Char as Char
 import qualified Data.Maybe as Maybe
+import qualified Data.Set as Set
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Text.Lazy
@@ -28,13 +29,16 @@ main = do
   Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length . (\(Actors actors _) -> actors) $ outlineActors outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
 
-  printNotes outline
+  mapM_ Text.IO.putStrLn . Set.toList . Set.fromList . fmap lineText $ getCharacterHeadings outline
+
+getCharacterHeadings :: OutlineV a b c d [Act] -> [Line]
+getCharacterHeadings outline = fmap trailLine . Maybe.catMaybes . fmap tryGetSceneDialogActor . flattenSceneItems $ outlineActs outline
 
 printNotes :: OutlineV a b c d [Act] -> IO ()
 printNotes outline =
   mapM_
     (Text.Lazy.IO.putStrLn . flip Text.Lazy.append "\n" . Text.Lazy.intercalate "\n" . fmap (formatLine . trailLine))
-    (Maybe.catMaybes . fmap tryGetSceneUnnamedDialog . flattenSceneItems $ outlineActs outline)
+    (Maybe.catMaybes . fmap tryGetSceneNote . flattenSceneItems $ outlineActs outline)
 
 flattenSceneItems :: [Act] -> [SceneItem]
 flattenSceneItems = concatMap (\(Scene _ _ items) -> items) . concatMap (\(Act _ scenes) -> scenes)
@@ -42,6 +46,10 @@ flattenSceneItems = concatMap (\(Scene _ _ items) -> items) . concatMap (\(Act _
 tryGetSceneNote :: SceneItem -> Maybe [Trail]
 tryGetSceneNote (SceneNote x) = Just x
 tryGetSceneNote _ = Nothing
+
+tryGetSceneDialogActor :: SceneItem -> Maybe Trail
+tryGetSceneDialogActor (SceneNamedDialog x _) = Just x
+tryGetSceneDialogActor _ = Nothing
 
 tryGetSceneUnnamedDialog :: SceneItem -> Maybe [Trail]
 tryGetSceneUnnamedDialog (SceneUnnamedDialog x) = Just x
