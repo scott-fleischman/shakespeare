@@ -755,13 +755,13 @@ HAMLET.
 Indeed, indeed, sirs, but this troubles me.
 Hold you the watch tonight?
 
-Mar. and BARNARDO.
+MARCELLUS and BARNARDO.
 We do, my lord.
 
 HAMLET.
 Arm’d, say you?
 
-Both.
+BOTH.
 Arm’d, my lord.
 
 HAMLET.
@@ -3492,7 +3492,7 @@ Give o’er the play.
 KING.
 Give me some light. Away.
 
-All.
+ALL.
 Lights, lights, lights.
 
  [_Exeunt all but Hamlet and Horatio._]
@@ -4842,7 +4842,7 @@ The doors are broke.
 LAERTES.
 Where is this king?—Sirs, stand you all without.
 
-Danes.
+DANES.
 No, let’s come in.
 
 LAERTES.
@@ -5862,7 +5862,7 @@ Pluck them asunder.
 QUEEN.
 Hamlet! Hamlet!
 
-All.
+ALL.
 Gentlemen!
 
 HORATIO.
