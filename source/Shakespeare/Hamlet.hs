@@ -6,6 +6,7 @@ module Shakespeare.Hamlet where
 
 import           Control.Monad ((>=>))
 import qualified Data.Char as Char
+import qualified Data.Maybe as Maybe
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Text.Lazy
@@ -27,7 +28,24 @@ main = do
   Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length . (\(Actors actors _) -> actors) $ outlineActors outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
 
-  mapM_ (Text.Lazy.IO.putStrLn . formatAct) (outlineActs outline)
+  printNotes outline
+
+printNotes :: OutlineV a b c d [Act] -> IO ()
+printNotes outline =
+  mapM_
+    (Text.Lazy.IO.putStrLn . flip Text.Lazy.append "\n" . Text.Lazy.intercalate "\n" . fmap (formatLine . trailLine))
+    (Maybe.catMaybes . fmap tryGetSceneUnnamedDialog . flattenSceneItems $ outlineActs outline)
+
+flattenSceneItems :: [Act] -> [SceneItem]
+flattenSceneItems = concatMap (\(Scene _ _ items) -> items) . concatMap (\(Act _ scenes) -> scenes)
+
+tryGetSceneNote :: SceneItem -> Maybe [Trail]
+tryGetSceneNote (SceneNote x) = Just x
+tryGetSceneNote _ = Nothing
+
+tryGetSceneUnnamedDialog :: SceneItem -> Maybe [Trail]
+tryGetSceneUnnamedDialog (SceneUnnamedDialog x) = Just x
+tryGetSceneUnnamedDialog _ = Nothing
 
 formatAct :: Act -> Text.Lazy.Text
 formatAct (Act number scenes) = Formatting.format
@@ -238,12 +256,12 @@ parseSceneItem (single : []) =
     Just _ -> Right $ SceneNote [single]
 parseSceneItem (initial : rest) =
   let initialText = lineText . trailLine $ initial
-  in if Text.all (\x -> Char.isUpper x || x == '.' || Char.isSpace x) initialText
-    then
-      if Text.isPrefixOf " " initialText
-        then Right $ SceneNote (initial : rest)
-        else Right $ SceneNamedDialog initial rest
-    else Right $ SceneUnnamedDialog (initial : rest)
+  in if Text.isPrefixOf " " initialText
+    then Right $ SceneNote (initial : rest)
+    else
+      if Text.all (\x -> Char.isUpper x || x == '.' || x == ',' || Char.isSpace x) initialText
+        then Right $ SceneNamedDialog initial rest
+        else Right $ SceneUnnamedDialog (initial : rest)
 
 renderSceneItem :: SceneItem -> Text
 renderSceneItem (SceneNote note) = renderTrails note
