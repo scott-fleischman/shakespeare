@@ -259,7 +259,8 @@ parseSceneItem (initial : rest) =
   in if Text.isPrefixOf " " initialText
     then Right $ SceneNote (initial : rest)
     else
-      if Text.all (\x -> Char.isUpper x || x == '.' || x == ',' || Char.isSpace x) initialText
+      let isCapsWord = Text.all (\x -> Char.isUpper x || x == '.')
+      in if (all (\x -> x == "and" || isCapsWord x) . Text.words) initialText
         then Right $ SceneNamedDialog initial rest
         else Right $ SceneUnnamedDialog (initial : rest)
 
