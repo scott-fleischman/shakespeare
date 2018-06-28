@@ -1,0 +1,397 @@
+83    Enter Francisco and Barnardo, two sentinels.
+
+121   Enter Horatio and Marcellus.
+
+141   [_Exit._]
+
+193   Enter Ghost.
+
+228   [_Exit Ghost._]
+
+328   Re-enter Ghost.
+
+345   [_The cock crows._]
+
+361   [_Exit Ghost._]
+
+409   [_Exeunt._]
+
+413   Enter Claudius King of Denmark, Gertrude the Queen, Hamlet, Polonius,
+414   Laertes, Voltemand,
+415  Cornelius, Lords and Attendant.
+
+464   [_Exeunt Voltemand and Cornelius._]
+
+586   [_Exeunt all but Hamlet._]
+
+621   Enter Horatio, Marcellus and Barnardo.
+
+847   [_Exeunt Horatio, Marcellus and Barnardo._]
+
+854   [_Exit._]
+
+858   Enter Laertes and Ophelia.
+
+930   Enter Polonius.
+
+940   [_Laying his hand on Laertes’s head._]
+
+984   [_Exit._]
+
+1059  [_Exeunt._]
+
+1063  Enter Hamlet, Horatio and Marcellus.
+
+1084  [_A flourish of trumpets, and ordnance shot off within._]
+
+1129  Enter Ghost.
+
+1152  [_Ghost beckons Hamlet._]
+
+1210  [_Ghost beckons._]
+
+1214  [_Breaking free from them._]
+
+1219  [_Exeunt Ghost and Hamlet._]
+
+1239  [_Exeunt._]
+
+1243  Enter Ghost and Hamlet.
+
+1377  [_Exit._]
+
+1399  [_Writing._]
+
+1423  Enter Horatio and Marcellus.
+
+1583  [_Exeunt._]
+
+1591  Enter Polonius and Reynaldo.
+
+1727  [_Exit Reynaldo._]
+
+1729  Enter Ophelia.
+
+1800  [_Exeunt._]
+
+1804  Enter King, Queen, Rosencrantz, Guildenstern and Attendants.
+
+1864  [_Exeunt Rosencrantz, Guildenstern and some Attendants._]
+
+1866  Enter Polonius.
+
+1894  [_Exit Polonius._]
+
+1906  Enter Polonius with Voltemand and Cornelius.
+
+1943  [_Exeunt Voltemand and Cornelius._]
+
+2074  Enter Hamlet, reading.
+
+2083  [_Exeunt King, Queen and Attendants._]
+
+2175  Enter Rosencrantz and Guildenstern.
+
+2183  [_Exit Polonius._]
+
+2409  [_Flourish of trumpets within._]
+
+2428  Enter Polonius.
+
+2505  Enter four or five Players.
+
+2643  [_Exeunt Polonius with all the Players but the First._]
+
+2661  [_Exit First Player._]
+
+2669  [_Exeunt Rosencrantz and Guildenstern._]
+
+2731  [_Exit._]
+
+2739  Enter King, Queen, Polonius, Ophelia, Rosencrantz and Guildenstern.
+
+2795  [_Exeunt Rosencrantz and Guildenstern._]
+
+2820  [_Exit Queen._]
+
+2842  [_Exeunt King and Polonius._]
+
+2844  Enter Hamlet.
+
+2980  [_Exit._]
+
+2996  Enter King and Polonius.
+
+3032  [_Exeunt._]
+
+3036  Enter Hamlet and certain Players.
+
+3082  [_Exeunt Players._]
+
+3084  Enter Polonius, Rosencrantz and Guildenstern.
+
+3095  [_Exit Polonius._]
+
+3102  [_Exeunt Rosencrantz and Guildenstern._]
+
+3107  Enter Horatio.
+
+3162  Danish march. A flourish. Enter King, Queen, Polonius, Ophelia,
+3163  Rosencrantz, Guildenstern and others.
+
+3208  [_Lying down at Ophelia’s feet._]
+
+3259  Trumpets sound. The dumb show enters.
+
+3272  [_Exeunt._]
+
+3283  Enter Prologue.
+
+3313  Enter a King and a Queen.
+
+3414  [_Exit._]
+
+3441  Enter Lucianus.
+
+3473  [_Pours the poison into the sleeper’s ears._]
+
+3498  [_Exeunt all but Hamlet and Horatio._]
+
+3541  Enter Rosencrantz and Guildenstern.
+
+3635  Re-enter the Players with recorders.
+
+3679  Enter Polonius.
+
+3711  [_Exit._]
+
+3716  [_Exeunt all but Hamlet._]
+
+3731  [_Exit._]
+
+3735  Enter King, Rosencrantz and Guildenstern.
+
+3775  [_Exeunt Rosencrantz and Guildenstern._]
+
+3777  Enter Polonius.
+
+3793  [_Exit Polonius._]
+
+3833  [_Retires and kneels._]
+
+3835  Enter Hamlet.
+
+3861  [_Exit._]
+
+3863  The King rises and advances.
+
+3869  [_Exit._]
+
+3873  Enter Queen and Polonius.
+
+3889  [_Polonius goes behind the arras._]
+
+3891  Enter Hamlet.
+
+3941  [_Makes a pass through the arras._]
+
+3946  [_Falls and dies._]
+
+3954  [_Draws forth Polonius._]
+
+4068  Enter Ghost.
+
+4132  [_Exit Ghost._]
+
+4239  [_Exit Hamlet dragging out Polonius._]
+
+4247  Enter King, Queen, Rosencrantz and Guildenstern.
+
+4257  [_To Rosencrantz and Guildenstern, who go out._]
+
+4299  Re-enter Rosencrantz and Guildenstern.
+
+4307  [_Exeunt Rosencrantz and Guildenstern._]
+
+4318  [_Exeunt._]
+
+4322  Enter Hamlet.
+
+4333  Enter Rosencrantz and Guildenstern.
+
+4384  [_Exeunt._]
+
+4388  Enter King, attended.
+
+4403  Enter Rosencrantz.
+
+4423  Enter Hamlet and Guildenstern.
+
+4470  [_Exeunt Attendants._]
+
+4504  [_Exit._]
+
+4512  [_Exeunt Rosencrantz and Guildenstern._]
+
+4526  [_Exit._]
+
+4530  Enter Fortinbras and Forces marching.
+
+4547  [_Exeunt all but the Captain._]
+
+4549  Enter Hamlet, Rosencrantz, Guildenstern &c.
+
+4597  [_Exit._]
+
+4605  [_Exeunt all but Hamlet._]
+
+4643  [_Exit._]
+
+4647  Enter Queen, Horatio and a Gentleman.
+
+4676  [_Exit Gentleman._]
+
+4683  Enter Ophelia.
+
+4717  Enter King.
+
+4747    Then up he rose and donn’d his clothes,
+4748      And dupp’d the chamber door,
+4749    Let in the maid, that out a maid
+4750      Never departed more.
+
+4763    Quoth she, before you tumbled me,
+4764      You promis’d me to wed.
+4765    So would I ha’ done, by yonder sun,
+4766      An thou hadst not come to my bed.
+
+4777  [_Exit._]
+
+4782  [_Exit Horatio._]
+
+4806  [_A noise within._]
+
+4814  Enter a Gentleman.
+
+4835  [_A noise within._]
+
+4840  Enter Laertes, armed; Danes following.
+
+4854  [_They retire without the door._]
+
+4940  Re-enter Ophelia, fantastically dressed with straws and flowers.
+
+5000    His beard was as white as snow,
+5001    All flaxen was his poll.
+5002      He is gone, he is gone,
+5003      And we cast away moan.
+5004    God ha’ mercy on his soul.
+
+5008  [_Exit._]
+
+5039  [_Exeunt._]
+
+5043  Enter Horatio and a Servant.
+
+5054  [_Exit Servant._]
+
+5059  Enter Sailors.
+
+5093  [_Exeunt._]
+
+5097  Enter King and Laertes.
+
+5146  Enter a Messenger.
+
+5166  [_Exit Messenger._]
+
+5349  Enter Queen.
+
+5395  [_Exit._]
+
+5403  [_Exeunt._]
+
+5411  Enter two Clowns with spades, &c.
+
+5505  Enter Hamlet and Horatio, at a distance.
+
+5513  [_Exit Second Clown._]
+
+5517    In youth when I did love, did love,
+5518      Methought it was very sweet;
+5519    To contract, O, the time for, a, my behove,
+5520      O methought there was nothing meet.
+
+5539  [_Throws up a skull._]
+
+5571  [_Throws up another skull._]
+
+5748  [_Throws down the skull._]
+
+5772  Enter priests, &c, in procession; the corpse of Ophelia, Laertes and
+5773  Mourners following; King, Queen, their Trains, &c.
+
+5781  [_Retiring with Horatio._]
+
+5871  [_The Attendants part them, and they come out of the grave._]
+
+5918  [_Exit._]
+
+5923  [_Exit Horatio._]
+
+5933  [_Exeunt._]
+
+5937  Enter Hamlet and Horatio.
+
+6065  Enter Osric.
+
+6110  [_Hamlet moves him to put on his hat._]
+
+6233  [_Exit Osric._]
+
+6249  Enter a Lord.
+
+6274  [_Exit Lord._]
+
+6301  Enter King, Queen, Laertes, Lords, Osric and Attendants with foils &c.
+
+6306  [_The King puts Laertes’s hand into Hamlet’s._]
+
+6377  [_They prepare to play._]
+
+6403  [_They play._]
+
+6424  [_Trumpets sound, and cannon shot off within._]
+
+6431  [_They play._]
+
+6481  [_They play._]
+
+6489  [_Laertes wounds Hamlet; then, in scuffling, they change rapiers, and
+6490  Hamlet wounds Laertes._]
+
+6498  [_The Queen falls._]
+
+6523  [_Dies._]
+
+6529  [_Laertes falls._]
+
+6545  [_Stabs the King._]
+
+6558  [_King dies._]
+
+6567  [_Dies._]
+
+6595  [_March afar off, and shot within._]
+
+6613  [_Dies._]
+
+6620  [_March within._]
+
+6622  Enter Fortinbras, the English Ambassadors and others.
+
+6687  [_A dead march._]
+
+6689  [_Exeunt, bearing off the bodies, after which a peal of ordnance is
+6690  shot off._]
+

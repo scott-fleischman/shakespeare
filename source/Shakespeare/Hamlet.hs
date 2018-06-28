@@ -29,16 +29,40 @@ main = do
   Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length . (\(Actors actors _) -> actors) $ outlineActors outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
 
-  mapM_ Text.IO.putStrLn . Set.toList . Set.fromList . fmap lineText $ getCharacterHeadings outline
+  writeDialogDebugFiles outline
 
-getCharacterHeadings :: OutlineV a b c d [Act] -> [Line]
-getCharacterHeadings outline = fmap trailLine . Maybe.catMaybes . fmap tryGetSceneDialogActor . flattenSceneItems $ outlineActs outline
+writeDialogDebugFiles :: Outline2 -> IO ()
+writeDialogDebugFiles outline = do
+  let
+    acts = outlineActs outline
 
-printNotes :: OutlineV a b c d [Act] -> IO ()
-printNotes outline =
-  mapM_
-    (Text.Lazy.IO.putStrLn . flip Text.Lazy.append "\n" . Text.Lazy.intercalate "\n" . fmap (formatLine . trailLine))
-    (Maybe.catMaybes . fmap tryGetSceneNote . flattenSceneItems $ outlineActs outline)
+    names = getNamedDialogNames acts
+  Text.IO.writeFile "hamlet-dialog-names.txt" $ Text.unlines names
+
+  let
+    notes = getSceneNotes acts
+    formattedNotes = Text.Lazy.unlines $ formatTrails notes
+  Text.Lazy.IO.writeFile "hamlet-dialog-notes.txt" formattedNotes
+
+  let
+    unnamedDialog = getSceneUnnamedDialog acts
+    formattedUnnamedDialog = Text.Lazy.unlines $ formatTrails unnamedDialog
+  Text.Lazy.IO.writeFile "hamlet-dialog-unnamed.txt" formattedUnnamedDialog
+
+getNamedDialogNames :: [Act] -> [Text]
+getNamedDialogNames = Set.toList . Set.fromList . fmap lineText . getCharacterHeadings
+
+getCharacterHeadings :: [Act] -> [Line]
+getCharacterHeadings = fmap trailLine . Maybe.catMaybes . fmap tryGetSceneDialogActor . flattenSceneItems
+
+getSceneNotes :: [Act] -> [[Trail]]
+getSceneNotes = Maybe.catMaybes . fmap tryGetSceneNote . flattenSceneItems
+
+getSceneUnnamedDialog :: [Act] -> [[Trail]]
+getSceneUnnamedDialog = Maybe.catMaybes . fmap tryGetSceneUnnamedDialog . flattenSceneItems
+
+formatTrails :: [[Trail]] -> [Text.Lazy.Text]
+formatTrails = fmap (flip Text.Lazy.append "\n" . Text.Lazy.intercalate "\n" . fmap (formatLine . trailLine))
 
 flattenSceneItems :: [Act] -> [SceneItem]
 flattenSceneItems = concatMap (\(Scene _ _ items) -> items) . concatMap (\(Act _ scenes) -> scenes)
