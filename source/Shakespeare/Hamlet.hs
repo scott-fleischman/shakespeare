@@ -13,7 +13,7 @@ import           Control.Monad ((>=>))
 import qualified Data.Char as Char
 import qualified Data.Foldable as Foldable
 import           Data.Generics.Product (field, typed)
-import           Data.Generics.Sum (_Ctor)
+import           Data.Generics.Sum (_Ctor, _Typed)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import qualified Data.Text as Text
@@ -82,10 +82,10 @@ writeDialogDebugFiles outline = do
   Text.Lazy.IO.writeFile "hamlet-dialog-named-punctuation.txt" formattedNamedDialog
 
 getNamedDialogNames :: [Act] -> [Text]
-getNamedDialogNames = Set.toList . Set.fromList . fmap lineText . getCharacterHeadings
+getNamedDialogNames = Set.toList . Set.fromList . getCharacterHeadings
 
-getCharacterHeadings :: [Act] -> [Line]
-getCharacterHeadings = Lens.toListOf (traverse . _Ctor @"SceneNamedDialog" . typed @Trail . typed @Line) . flattenSceneItems
+getCharacterHeadings :: [Act] -> [Text]
+getCharacterHeadings = Lens.toListOf (traverse . _Typed @NamedDialog . typed @DialogActor . _Ctor @"SingleActor") . flattenSceneItems
 
 getSceneNotes :: [Act] -> [[Trail]]
 getSceneNotes = Lens.toListOf (traverse . _Ctor @"SceneNote") . flattenSceneItems
@@ -300,6 +300,7 @@ renderScene scene =
 data SceneItemError
   = EmptySceneItem
   | InvalidSingletonSceneItem Trail
+  | InvalidDialogActor Line
   deriving (Show, Generic)
 
 parseSceneItem :: [Trail] -> Either SceneItemError SceneItem
@@ -319,8 +320,25 @@ parseSceneItem (initial : rest) =
     else
       let isCapsWord = Text.all (\x -> Char.isUpper x || x == '.')
       in if (all (\x -> x == "and" || isCapsWord x) . Text.words) initialText
-        then Right $ SceneNamedDialog initial rest
+        then do
+          actor <- parseDialogActor $ initial ^. typed @Line
+          Right $ SceneNamedDialog $ NamedDialog actor rest
         else Right $ SceneUnnamedDialog (initial : rest)
+
+parseDialogActor :: Line -> Either SceneItemError DialogActor
+parseDialogActor line@(Line _ raw) = do
+  simple <-
+    case Text.stripSuffix "." raw of
+      Nothing -> Left $ InvalidDialogActor line
+      Just x -> return x
+  case Text.words simple of
+    [t]
+      | Text.toLower t == "all" -> Right $ AllActors
+      | Text.toLower t == "both" -> Right $ BothActors
+      | otherwise -> Right $ SingleActor t
+    [_, _] -> Right $ SingleActor simple
+    [w1, w2, w3] | Text.toLower w2 == "and" -> Right $ TwoActors w1 w3
+    _ -> Left $ InvalidDialogActor line
 
 isPoetry :: [Text] -> Bool
 isPoetry = isPoeticIndent . Set.fromList . fmap (Text.length . Text.takeWhile Char.isSpace)
@@ -332,7 +350,13 @@ isPoetry = isPoeticIndent . Set.fromList . fmap (Text.length . Text.takeWhile Ch
 renderSceneItem :: SceneItem -> Text
 renderSceneItem (SceneNote note) = renderTrails note
 renderSceneItem (SceneUnnamedDialog lines) = renderTrails lines
-renderSceneItem (SceneNamedDialog actor lines) = renderTrails (actor : lines)
+renderSceneItem (SceneNamedDialog (NamedDialog actor lines)) = Text.concat [renderDialogActor actor, ".\n", renderTrails (lines)]
+
+renderDialogActor :: DialogActor -> Text
+renderDialogActor AllActors = "ALL"
+renderDialogActor BothActors = "BOTH"
+renderDialogActor (SingleActor t) = t
+renderDialogActor (TwoActors a1 a2) = Text.concat [a1, " and ", a2]
 
 newtype ActNumber = ActNumber Int deriving Generic
 data Act = Act ActNumber [Scene] deriving Generic
@@ -343,14 +367,11 @@ data Scene = Scene SceneNumber SceneDescription [SceneItem] deriving Generic
 
 data SceneItem
   = SceneNote [Trail]
-  | SceneNamedDialog Trail [Trail]
+  | SceneNamedDialog NamedDialog
   | SceneUnnamedDialog [Trail]
   deriving (Generic, Show)
 
-data Dialog = Dialog
-  { dialogActorLabel :: ActorLabel
-  , dialogLines :: [Trail]
-  }
+data NamedDialog = NamedDialog DialogActor [Trail] deriving (Generic, Show)
 
 data Actors = Actors
   { actorsList :: [Actor]
@@ -358,6 +379,13 @@ data Actors = Actors
   }
 
 newtype ActorLabel = ActorLabel Text deriving (Eq, Ord, Generic)
+
+data DialogActor
+  = SingleActor Text
+  | TwoActors Text Text
+  | BothActors
+  | AllActors
+  deriving (Generic, Show)
 
 data Actor
   = ActorMajor ActorLabel Trail
