@@ -5,6 +5,7 @@ extra-deps:
 - conduit-1.2.13.1
 - conduit-extra-1.2.3.2
 - fullstop-0.1.4
+- generic-lens-1.0.0.1
 - http-conduit-2.2.4
 - logging-3.0.5
 - pdf-toolbox-content-0.0.5.1

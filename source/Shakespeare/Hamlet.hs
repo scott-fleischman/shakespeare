@@ -1,12 +1,17 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Shakespeare.Hamlet where
 
+import qualified Control.Lens as Lens
 import           Control.Monad ((>=>))
 import qualified Data.Char as Char
-import qualified Data.Maybe as Maybe
+import           Data.Generics.Product (typed)
+import           Data.Generics.Sum (_Ctor)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import qualified Data.Text as Text
@@ -15,6 +20,7 @@ import qualified Data.Text.IO as Text.IO
 import qualified Data.Text.Lazy.IO as Text.Lazy.IO
 import           Formatting ((%))
 import qualified Formatting
+import           GHC.Generics (Generic)
 import           Prelude hiding (lines)
 import qualified Text.Numeral.Roman
 
@@ -77,38 +83,22 @@ getNamedDialogNames :: [Act] -> [Text]
 getNamedDialogNames = Set.toList . Set.fromList . fmap lineText . getCharacterHeadings
 
 getCharacterHeadings :: [Act] -> [Line]
-getCharacterHeadings = fmap trailLine . Maybe.catMaybes . fmap tryGetSceneDialogActor . flattenSceneItems
+getCharacterHeadings = Lens.toListOf (traverse . _Ctor @"SceneNamedDialog" . typed @Trail . typed @Line) . flattenSceneItems
 
 getSceneNotes :: [Act] -> [[Trail]]
-getSceneNotes = Maybe.catMaybes . fmap tryGetSceneNote . flattenSceneItems
+getSceneNotes = Lens.toListOf (traverse . _Ctor @"SceneNote") . flattenSceneItems
 
 getSceneUnnamedDialog :: [Act] -> [[Trail]]
-getSceneUnnamedDialog = Maybe.catMaybes . fmap tryGetSceneUnnamedDialog . flattenSceneItems
+getSceneUnnamedDialog = Lens.toListOf (traverse . _Ctor @"SceneUnnamedDialog") . flattenSceneItems
 
 getSceneNamedDialog :: [Act] -> [[Trail]]
-getSceneNamedDialog = Maybe.catMaybes . fmap tryGetSceneNamedDialog . flattenSceneItems
+getSceneNamedDialog = Lens.toListOf (traverse . _Ctor @"SceneNamedDialog" . typed @[Trail]) . flattenSceneItems
 
 formatTrails :: [[Trail]] -> [Text.Lazy.Text]
 formatTrails = fmap (flip Text.Lazy.append "\n" . Text.Lazy.intercalate "\n" . fmap (formatLine . trailLine))
 
 flattenSceneItems :: [Act] -> [SceneItem]
 flattenSceneItems = concatMap (\(Scene _ _ items) -> items) . concatMap (\(Act _ scenes) -> scenes)
-
-tryGetSceneNote :: SceneItem -> Maybe [Trail]
-tryGetSceneNote (SceneNote x) = Just x
-tryGetSceneNote _ = Nothing
-
-tryGetSceneDialogActor :: SceneItem -> Maybe Trail
-tryGetSceneDialogActor (SceneNamedDialog x _) = Just x
-tryGetSceneDialogActor _ = Nothing
-
-tryGetSceneUnnamedDialog :: SceneItem -> Maybe [Trail]
-tryGetSceneUnnamedDialog (SceneUnnamedDialog x) = Just x
-tryGetSceneUnnamedDialog _ = Nothing
-
-tryGetSceneNamedDialog :: SceneItem -> Maybe [Trail]
-tryGetSceneNamedDialog (SceneNamedDialog _ x) = Just x
-tryGetSceneNamedDialog _ = Nothing
 
 formatAct :: Act -> Text.Lazy.Text
 formatAct (Act number scenes) = Formatting.format
@@ -145,7 +135,7 @@ data OutlineV a b c d e = Outline
   , outlineContents :: c
   , outlineActors :: d
   , outlineActs :: e
-  } deriving Show
+  } deriving (Show, Generic)
 
 outlineTitleLens    :: forall a a' b c d e f. Functor f => (a -> f a') -> OutlineV a b c d e -> f (OutlineV a' b c d e)
 outlineTitleLens    f (Outline a b c d e) = fmap (\a' -> Outline a' b c d e) (f a)
@@ -169,16 +159,16 @@ type OutlineRenderer t a b c d e = OutlineV (a -> t) (b -> t) (c -> t) (d -> t) 
 data OutlineTrailError
   = OutlineNoTitle
   | OutlineNoAuthor
-  deriving Show
+  deriving (Show, Generic)
 
-newtype Title = Title Text
-newtype Author = Author Text
+newtype Title = Title Text deriving Generic
+newtype Author = Author Text deriving Generic
 
-data TitleError = TitleInvalidBlankLines Int deriving Show
+data TitleError = TitleInvalidBlankLines Int deriving (Show, Generic)
 data AuthorError
   = AuthorInvalidBlankLines Int
   | AuthorNoBy Text
-  deriving Show
+  deriving (Show, Generic)
 
 data AllError
   = AllErrorInitialBlankLine  InitialBlankLine
@@ -188,7 +178,7 @@ data AllError
   | AllErrorContents          ContentsError
   | AllErrorActors            ActorsError
   | AllErrorAct               ActError
-  deriving Show
+  deriving (Show, Generic)
 
 parseFull :: Text -> Either AllError Outline2
 parseFull
@@ -210,7 +200,7 @@ data ActError
   | InvalidActHeaderBlankLines Trail
   | InvalidActNumber Trail
   | ActSceneError SceneError
-  deriving Show
+  deriving (Show, Generic)
 
 parseActs :: [[Trail]] -> Either ActError [Act]
 parseActs = traverse parseAct
@@ -267,7 +257,7 @@ data SceneError
   | InvalidSceneNumber Text Trail
   | InvalidScenePunctutationAfterNumber Text Trail
   | SceneErrorItem SceneItemError
-  deriving Show
+  deriving (Show, Generic)
 
 parseScene :: [Trail] -> Either SceneError Scene
 parseScene input = do
@@ -308,7 +298,7 @@ renderScene (Scene number description items) =
 data SceneItemError
   = EmptySceneItem
   | InvalidSingletonSceneItem Trail
-  deriving Show
+  deriving (Show, Generic)
 
 parseSceneItem :: [Trail] -> Either SceneItemError SceneItem
 parseSceneItem [] = Left EmptySceneItem
@@ -335,19 +325,19 @@ renderSceneItem (SceneNamedDialog actor lines) = renderTrails (actor : lines)
 data Act = Act
   { actNumber :: Int
   , actScenes :: [Scene]
-  }
+  } deriving Generic
 
 data Scene = Scene
   { sceneNumber :: Int
   , sceneDescription :: Text
   , sceneItems :: [SceneItem]
-  }
+  } deriving Generic
 
 data SceneItem
   = SceneNote [Trail]
   | SceneNamedDialog Trail [Trail]
   | SceneUnnamedDialog [Trail]
-  deriving Show
+  deriving (Generic, Show)
 
 data Dialog = Dialog
   { dialogActorLabel :: ActorLabel
@@ -359,18 +349,19 @@ data Actors = Actors
   , actorsScene :: Trail
   }
 
-newtype ActorLabel = ActorLabel Text deriving (Eq, Ord)
+newtype ActorLabel = ActorLabel Text deriving (Eq, Ord, Generic)
 
 data Actor
   = ActorMajor ActorLabel Trail
   | ActorMinor Trail
+  deriving Generic
 
 data ActorsError
   = EmptyActors
   | InvalidActorHeader Trail
   | MissingSceneAfterActors
   | TooManyScenesAfterActors [Trail]
-  deriving Show
+  deriving (Generic, Show)
 
 parseActors :: [Trail] -> Either ActorsError Actors
 parseActors input = do
@@ -426,10 +417,10 @@ renderActor (ActorMinor t) = renderTrail t
 data ContentsError
   = EmptyContents
   | InvalidContentsHeader Trail
-  deriving Show
+  deriving (Generic, Show)
 
-newtype Contents = Contents [ContentsAct]
-newtype ContentsAct = ContentsAct [Trail]
+newtype Contents = Contents [ContentsAct] deriving Generic
+newtype ContentsAct = ContentsAct [Trail] deriving Generic
 
 parseContents :: [Trail] -> Either ContentsError Contents
 parseContents input = do
@@ -588,8 +579,8 @@ takeWhileSplit f (x : xs) =
 data Line = Line
   { lineNumber :: LineNumber
   , lineText :: Text
-  } deriving Show
-newtype LineNumber = LineNumber Int deriving Show
+  } deriving (Generic, Show)
+newtype LineNumber = LineNumber Int deriving (Generic, Show)
 
 getTextLines :: Text -> [Line]
 getTextLines = zipWith Line lineNumbers . Text.lines
@@ -599,9 +590,9 @@ getTextLines = zipWith Line lineNumbers . Text.lines
 data Trail = Trail
   { trailLine :: Line
   , trailBlankLines :: Int
-  } deriving Show
+  } deriving (Generic, Show)
 
-data InitialBlankLine = InitialBlankLine deriving Show
+data InitialBlankLine = InitialBlankLine deriving (Generic, Show)
 
 isBlankLine :: Line -> Bool
 isBlankLine = Text.null . lineText

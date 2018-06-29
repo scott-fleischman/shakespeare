@@ -5,6 +5,7 @@ dependencies:
 - base
 - containers
 - formatting
+- generic-lens
 - lens
 - roman-numerals
 - text
