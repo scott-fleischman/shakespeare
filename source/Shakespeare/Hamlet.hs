@@ -44,8 +44,26 @@ writeDialogDebugFiles outline = do
   let
     acts = outlineActs outline
 
-    names = getNamedDialogNames acts
-  Text.IO.writeFile "hamlet-dialog-names.txt" $ Text.unlines names
+    actors
+      = Lens.toListOf (traverse . _Typed @NamedDialog . typed @DialogActor)
+      . flattenSceneItems
+      $ acts
+    singleNames = Set.toList . Set.fromList . Lens.toListOf (traverse . _Ctor @"SingleActor") $ actors
+    doubleNames = Set.toList . Set.fromList . Lens.toListOf (traverse . _Ctor @"TwoActors") $ actors
+    namesText =
+      Text.concat
+        [ Text.unlines singleNames
+        , "\n"
+        , Text.Lazy.toStrict . Text.Lazy.unlines $
+            fmap
+              (\(x, y) ->
+                Formatting.format (Formatting.text % Formatting.stext)
+                  (Formatting.format (Formatting.right 15 ' ') x)
+                  y
+              )
+              doubleNames
+        ]
+  Text.IO.writeFile "hamlet-dialog-names.txt" namesText
 
   let
     notes = getSceneNotes acts
@@ -80,12 +98,6 @@ writeDialogDebugFiles outline = do
         namedDialog
     formattedNamedDialog = Text.Lazy.unlines $ formatTrails namedDialogPunctuation
   Text.Lazy.IO.writeFile "hamlet-dialog-named-punctuation.txt" formattedNamedDialog
-
-getNamedDialogNames :: [Act] -> [Text]
-getNamedDialogNames = Set.toList . Set.fromList . getCharacterHeadings
-
-getCharacterHeadings :: [Act] -> [Text]
-getCharacterHeadings = Lens.toListOf (traverse . _Typed @NamedDialog . typed @DialogActor . _Ctor @"SingleActor") . flattenSceneItems
 
 getSceneNotes :: [Act] -> [[Trail]]
 getSceneNotes = Lens.toListOf (traverse . _Ctor @"SceneNote") . flattenSceneItems
