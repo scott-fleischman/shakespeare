@@ -20,7 +20,7 @@ import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Text.Lazy
 import qualified Data.Text.IO as Text.IO
 import qualified Data.Text.Lazy.IO as Text.Lazy.IO
-import           Formatting ((%))
+import           Formatting ((%), (%.))
 import qualified Formatting
 import           GHC.Generics (Generic)
 import           Prelude hiding (lines)
@@ -56,11 +56,7 @@ writeDialogDebugFiles outline = do
         , "\n"
         , Text.Lazy.toStrict . Text.Lazy.unlines $
             fmap
-              (\(x, y) ->
-                Formatting.format (Formatting.text % Formatting.stext)
-                  (Formatting.format (Formatting.right 15 ' ') x)
-                  y
-              )
+              (uncurry $ Formatting.format ((Formatting.right 15 ' ' %. Formatting.stext) % Formatting.stext))
               doubleNames
         ]
   Text.IO.writeFile "hamlet-dialog-names.txt" namesText
