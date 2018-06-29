@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 import qualified Control.Monad.IO.Class as Monad.IO.Class
@@ -52,6 +53,32 @@ prop_takeWhileSplit_examples =
     Shakespeare.Hamlet.takeWhileSplit Char.isLower "" === ("", "")
     Shakespeare.Hamlet.takeWhileSplit Char.isLower "abc" === ("abc", "")
     Shakespeare.Hamlet.takeWhileSplit Char.isLower "AbcDef" === ("", "AbcDef")
+
+prop_isPoetry_examples :: Hedgehog.Property
+prop_isPoetry_examples =
+  Hedgehog.withTests 1 . Hedgehog.property $ do
+    Shakespeare.Hamlet.isPoetry
+      [ "  His beard was as white as snow,"
+      , "  All flaxen was his poll."
+      , "    He is gone, he is gone,"
+      , "    And we cast away moan."
+      , "  God ha’ mercy on his soul."
+      ]
+      === True
+
+    Shakespeare.Hamlet.isPoetry
+      [ "   In youth when I did love, did love,"
+      , "     Methought it was very sweet;"
+      , "   To contract, O, the time for, a, my behove,"
+      , "     O methought there was nothing meet."
+      ]
+      === True
+
+    Shakespeare.Hamlet.isPoetry
+      [ " Enter priests, &c, in procession; the corpse of Ophelia, Laertes and"
+      , " Mourners following; King, Queen, their Trains, &c."
+      ]
+      === False
 
 linesShouldEqual :: Text.Text -> Text.Text -> Hedgehog.PropertyT IO ()
 linesShouldEqual actualText expectedText = do

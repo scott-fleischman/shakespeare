@@ -255,16 +255,6 @@
 
 4717  Enter King.
 
-4747    Then up he rose and donn’d his clothes,
-4748      And dupp’d the chamber door,
-4749    Let in the maid, that out a maid
-4750      Never departed more.
-
-4763    Quoth she, before you tumbled me,
-4764      You promis’d me to wed.
-4765    So would I ha’ done, by yonder sun,
-4766      An thou hadst not come to my bed.
-
 4777  [_Exit._]
 
 4782  [_Exit Horatio._]
@@ -280,12 +270,6 @@
 4854  [_They retire without the door._]
 
 4940  Re-enter Ophelia, fantastically dressed with straws and flowers.
-
-5000    His beard was as white as snow,
-5001    All flaxen was his poll.
-5002      He is gone, he is gone,
-5003      And we cast away moan.
-5004    God ha’ mercy on his soul.
 
 5008  [_Exit._]
 
@@ -316,11 +300,6 @@
 5505  Enter Hamlet and Horatio, at a distance.
 
 5513  [_Exit Second Clown._]
-
-5517    In youth when I did love, did love,
-5518      Methought it was very sweet;
-5519    To contract, O, the time for, a, my behove,
-5520      O methought there was nothing meet.
 
 5539  [_Throws up a skull._]
 

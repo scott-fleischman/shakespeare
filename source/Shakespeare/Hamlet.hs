@@ -10,7 +10,8 @@ module Shakespeare.Hamlet where
 import qualified Control.Lens as Lens
 import           Control.Monad ((>=>))
 import qualified Data.Char as Char
-import           Data.Generics.Product (typed)
+import qualified Data.Foldable as Foldable
+import           Data.Generics.Product (field, typed)
 import           Data.Generics.Sum (_Ctor)
 import qualified Data.Set as Set
 import           Data.Text (Text)
@@ -310,12 +311,22 @@ parseSceneItem (single : []) =
 parseSceneItem (initial : rest) =
   let initialText = lineText . trailLine $ initial
   in if Text.isPrefixOf " " initialText
-    then Right $ SceneNote (initial : rest)
+    then
+      if isPoetry $ fmap (Lens.view $ field @"trailLine" . field @"lineText") (initial : rest)
+        then Right $ SceneUnnamedDialog (initial : rest)
+        else Right $ SceneNote (initial : rest)
     else
       let isCapsWord = Text.all (\x -> Char.isUpper x || x == '.')
       in if (all (\x -> x == "and" || isCapsWord x) . Text.words) initialText
         then Right $ SceneNamedDialog initial rest
         else Right $ SceneUnnamedDialog (initial : rest)
+
+isPoetry :: [Text] -> Bool
+isPoetry = isPoeticIndent . Set.fromList . fmap (Text.length . Text.takeWhile Char.isSpace)
+  where
+  isPoeticIndent indentLengths
+    = Set.size indentLengths >= 2
+    && Foldable.all (> 0) indentLengths
 
 renderSceneItem :: SceneItem -> Text
 renderSceneItem (SceneNote note) = renderTrails note

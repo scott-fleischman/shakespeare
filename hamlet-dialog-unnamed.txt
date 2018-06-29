@@ -243,6 +243,16 @@
 4680 So full of artless jealousy is guilt,
 4681 It spills itself in fearing to be spilt.
 
+4747    Then up he rose and donn’d his clothes,
+4748      And dupp’d the chamber door,
+4749    Let in the maid, that out a maid
+4750      Never departed more.
+
+4763    Quoth she, before you tumbled me,
+4764      You promis’d me to wed.
+4765    So would I ha’ done, by yonder sun,
+4766      An thou hadst not come to my bed.
+
 4784 O, this is the poison of deep grief; it springs
 4785 All from her father’s death. O Gertrude, Gertrude,
 4786 When sorrows come, they come not single spies,
@@ -278,6 +288,12 @@
 4950 It sends some precious instance of itself
 4951 After the thing it loves.
 
+5000    His beard was as white as snow,
+5001    All flaxen was his poll.
+5002      He is gone, he is gone,
+5003      And we cast away moan.
+5004    God ha’ mercy on his soul.
+
 5006 And of all Christian souls, I pray God. God b’ wi’ ye.
 
 5056 I do not know from what part of the world
@@ -301,6 +317,11 @@
 5351 How now, sweet Queen?
 
 5515 [_Digs and sings._]
+
+5517    In youth when I did love, did love,
+5518      Methought it was very sweet;
+5519    To contract, O, the time for, a, my behove,
+5520      O methought there was nothing meet.
 
 5775 The Queen, the courtiers. Who is that they follow?
 5776 And with such maimed rites? This doth betoken
