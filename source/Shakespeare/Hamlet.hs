@@ -98,7 +98,7 @@ formatTrails :: [[Trail]] -> [Text.Lazy.Text]
 formatTrails = fmap (flip Text.Lazy.append "\n" . Text.Lazy.intercalate "\n" . fmap (formatLine . trailLine))
 
 flattenSceneItems :: [Act] -> [SceneItem]
-flattenSceneItems = concatMap (\(Scene _ _ items) -> items) . concatMap (\(Act _ scenes) -> scenes)
+flattenSceneItems = Lens.toListOf (traverse . typed @[Scene] . traverse . typed @[SceneItem] . traverse)
 
 formatAct :: Act -> Text.Lazy.Text
 formatAct (Act number scenes) = Formatting.format
