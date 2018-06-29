@@ -110,12 +110,12 @@ formatAct act = Formatting.format
   (Text.Lazy.concat . fmap (Formatting.format ("  " % Formatting.text % "\n") . formatScene) $ act ^. typed @[Scene])
 
 formatScene :: Scene -> Text.Lazy.Text
-formatScene (Scene number description items) =
+formatScene scene =
   Formatting.format
     ("Scene " % Formatting.int % ". " % Formatting.stext % "\n  " % Formatting.text)
-    number
-    description
-    (Text.Lazy.intercalate "\n" $ fmap (Formatting.format ("  " % Formatting.shown)) $ take 5 items)
+    (scene ^. typed @SceneNumber . typed @Int)
+    (scene ^. typed @SceneDescription . typed @Text)
+    (Text.Lazy.intercalate "\n" $ fmap (Formatting.format ("  " % Formatting.shown)) $ take 5 $ scene ^. typed @[SceneItem])
 
 formatActor :: Actor -> Text.Lazy.Text
 formatActor (ActorMajor (ActorLabel label) t) = Formatting.format (Formatting.right 13 ' ' % Formatting.stext % " ") label (renderTrail t)
@@ -250,7 +250,7 @@ renderAct act = Text.concat
   , " "
   , Text.Numeral.Roman.toRoman $ act ^. typed @ActNumber . typed @Int
   , "\n\n"
-  , Text.intercalate "\n" (fmap renderScene $ act ^. typed @[Scene])
+  , Text.intercalate "\n" . fmap renderScene $ act ^. typed @[Scene]
   ]
 
 data SceneError
@@ -275,26 +275,26 @@ parseScene input = do
   number <-
     case Text.Numeral.Roman.fromRoman numberText of
       Nothing -> Left $ InvalidSceneNumber numberText headerTrail
-      Just x -> Right x
+      Just x -> Right $ SceneNumber x
   description <-
     case Text.stripPrefix ". " afterNumber of
       Nothing -> Left $ InvalidScenePunctutationAfterNumber afterNumber headerTrail
-      Just x -> return x
+      Just x -> Right $ SceneDescription x
   let sceneItemTrails = repeatSplit (takeWhileExtraSplit ((== 0) . trailBlankLines)) afterHeader
   items <-
     overLeft SceneErrorItem $ traverse parseSceneItem sceneItemTrails
   Right $ Scene number description items
 
 renderScene :: Scene -> Text
-renderScene (Scene number description items) =
+renderScene scene =
   Text.concat
     [ scenePrefixText
     , " "
-    , Text.Numeral.Roman.toRoman number
+    , Text.Numeral.Roman.toRoman $ scene ^. typed @SceneNumber . typed @Int
     , ". "
-    , description
+    , scene ^. typed @SceneDescription . typed @Text
     , "\n\n"
-    , Text.intercalate "\n" $ fmap renderSceneItem items
+    , Text.intercalate "\n" $ fmap renderSceneItem $ scene ^. typed @[SceneItem]
     ]
 
 data SceneItemError
@@ -334,14 +334,12 @@ renderSceneItem (SceneNote note) = renderTrails note
 renderSceneItem (SceneUnnamedDialog lines) = renderTrails lines
 renderSceneItem (SceneNamedDialog actor lines) = renderTrails (actor : lines)
 
-newtype ActNumber = ActNumber Int deriving (Eq, Ord, Generic)
+newtype ActNumber = ActNumber Int deriving Generic
 data Act = Act ActNumber [Scene] deriving Generic
 
-data Scene = Scene
-  { sceneNumber :: Int
-  , sceneDescription :: Text
-  , sceneItems :: [SceneItem]
-  } deriving Generic
+newtype SceneNumber = SceneNumber Int deriving Generic
+newtype SceneDescription = SceneDescription Text deriving Generic
+data Scene = Scene SceneNumber SceneDescription [SceneItem] deriving Generic
 
 data SceneItem
   = SceneNote [Trail]
