@@ -7,6 +7,7 @@
 
 module Shakespeare.Hamlet where
 
+import           Control.Lens ((^.))
 import qualified Control.Lens as Lens
 import           Control.Monad ((>=>))
 import qualified Data.Char as Char
@@ -102,11 +103,11 @@ flattenSceneItems :: [Act] -> [SceneItem]
 flattenSceneItems = Lens.toListOf (traverse . typed @[Scene] . traverse . typed @[SceneItem] . traverse)
 
 formatAct :: Act -> Text.Lazy.Text
-formatAct (Act number scenes) = Formatting.format
+formatAct act = Formatting.format
   ("Act " % Formatting.int % " : " % Formatting.int % " scenes\n" % Formatting.text)
-  number
-  (length scenes)
-  (Text.Lazy.concat . fmap (Formatting.format ("  " % Formatting.text % "\n") . formatScene) $ scenes)
+  (act ^. typed @ActNumber . typed @Int)
+  (length $ act ^. typed @[Scene])
+  (Text.Lazy.concat . fmap (Formatting.format ("  " % Formatting.text % "\n") . formatScene) $ act ^. typed @[Scene])
 
 formatScene :: Scene -> Text.Lazy.Text
 formatScene (Scene number description items) =
@@ -232,7 +233,7 @@ parseAct input = do
 
   scenes :: [Scene]
     <- overLeft ActSceneError $ traverse parseScene sceneTrails
-  Right $ Act numberValue scenes
+  Right $ Act (ActNumber numberValue) scenes
 
 isSceneHeader :: Trail -> Bool
 isSceneHeader = Text.isPrefixOf (Text.append scenePrefixText " ") . lineText . trailLine
@@ -244,12 +245,12 @@ renderActs :: [Act] -> Text
 renderActs = Text.intercalate "\n" . fmap renderAct
 
 renderAct :: Act -> Text
-renderAct (Act n s) = Text.concat
+renderAct act = Text.concat
   [ actHeaderText
   , " "
-  , Text.Numeral.Roman.toRoman n
+  , Text.Numeral.Roman.toRoman $ act ^. typed @ActNumber . typed @Int
   , "\n\n"
-  , Text.intercalate "\n" (fmap renderScene s)
+  , Text.intercalate "\n" (fmap renderScene $ act ^. typed @[Scene])
   ]
 
 data SceneError
@@ -333,10 +334,8 @@ renderSceneItem (SceneNote note) = renderTrails note
 renderSceneItem (SceneUnnamedDialog lines) = renderTrails lines
 renderSceneItem (SceneNamedDialog actor lines) = renderTrails (actor : lines)
 
-data Act = Act
-  { actNumber :: Int
-  , actScenes :: [Scene]
-  } deriving Generic
+newtype ActNumber = ActNumber Int deriving (Eq, Ord, Generic)
+data Act = Act ActNumber [Scene] deriving Generic
 
 data Scene = Scene
   { sceneNumber :: Int
