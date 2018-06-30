@@ -12,7 +12,7 @@ import qualified Control.Lens as Lens
 import           Control.Monad ((>=>))
 import qualified Data.Char as Char
 import qualified Data.Foldable as Foldable
-import           Data.Generics.Product (field, typed)
+import           Data.Generics.Product (field, position, typed)
 import           Data.Generics.Sum (_Ctor, _Typed)
 import qualified Data.Set as Set
 import           Data.Text (Text)
@@ -36,8 +36,6 @@ main = do
   Text.Lazy.IO.putStrLn $ Formatting.format ("content acts count: " % Formatting.shown) (length . (\(Contents acts) -> acts) $ outlineContents outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length . (\(Actors actors _) -> actors) $ outlineActors outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
-
-  writeDialogDebugFiles outline
 
 writeDialogDebugFiles :: Outline2 -> IO ()
 writeDialogDebugFiles outline = do
@@ -164,6 +162,7 @@ outlineActsLens     f (Outline a b c d e) = fmap (\e' -> Outline a b c d e') (f 
 
 type Outline1 = OutlineV Trail Trail  [Trail]  [Trail] [[Trail]]
 type Outline2 = OutlineV Title Author Contents Actors  [Act]
+type Outline3 = OutlineV Title Author Contents Actors  [Act2]
 type OutlineRenderer t a b c d e = OutlineV (a -> t) (b -> t) (c -> t) (d -> t) (e -> t)
 
 data OutlineTrailError
@@ -188,17 +187,19 @@ data AllError
   | AllErrorContents          ContentsError
   | AllErrorActors            ActorsError
   | AllErrorAct               ActError
+  | AllErrorDialogNamingError DialogNamingError
   deriving (Show, Generic)
 
-parseFull :: Text -> Either AllError Outline2
+parseFull :: Text -> Either AllError Outline3
 parseFull
-  =   overLeft AllErrorInitialBlankLine . getTrails . getTextLines
-  >=> overLeft AllErrorOutlineTrail     . parseOutline1
-  >=> overLeft AllErrorTitle            . outlineTitleLens parseTitle
-  >=> overLeft AllErrorAuthor           . outlineAuthorLens parseAuthor
-  >=> overLeft AllErrorContents         . outlineContentsLens parseContents
-  >=> overLeft AllErrorActors           . outlineActorsLens parseActors
-  >=> overLeft AllErrorAct              . outlineActsLens parseActs
+  =   overLeft AllErrorInitialBlankLine   . getTrails . getTextLines
+  >=> overLeft AllErrorOutlineTrail       . parseOutline1
+  >=> overLeft AllErrorTitle              . outlineTitleLens parseTitle
+  >=> overLeft AllErrorAuthor             . outlineAuthorLens parseAuthor
+  >=> overLeft AllErrorContents           . outlineContentsLens parseContents
+  >=> overLeft AllErrorActors             . outlineActorsLens parseActors
+  >=> overLeft AllErrorAct                . outlineActsLens parseActs
+  >=> overLeft AllErrorDialogNamingError  . (outlineActsLens . traverse . position @2 . traverse . position @3) nameUnnamedDialog
 
 overLeft :: (a -> a') -> Either a b -> Either a' b
 overLeft f (Left x)   = Left (f x)
@@ -250,15 +251,18 @@ scenePrefixText :: Text
 scenePrefixText = "SCENE"
 
 renderActs :: [Act] -> Text
-renderActs = Text.intercalate "\n" . fmap renderAct
+renderActs = renderActsV (renderSceneV renderSceneItemUnnamed)
 
-renderAct :: Act -> Text
-renderAct act = Text.concat
+renderActsV :: forall a. (SceneV a -> Text) -> [ActV [SceneV a]] -> Text
+renderActsV renderSceneF = Text.intercalate "\n" . fmap (renderActV renderSceneF)
+
+renderActV :: forall a. (SceneV a -> Text) -> ActV [SceneV a] -> Text
+renderActV renderSceneF act = Text.concat
   [ actHeaderText
   , " "
   , Text.Numeral.Roman.toRoman $ act ^. typed @ActNumber . typed @Int
   , "\n\n"
-  , Text.intercalate "\n" . fmap renderScene $ act ^. typed @[Scene]
+  , Text.intercalate "\n" . fmap renderSceneF $ act ^. typed @[SceneV a]
   ]
 
 data SceneError
@@ -293,8 +297,8 @@ parseScene input = do
     overLeft SceneErrorItem $ traverse parseSceneItem sceneItemTrails
   Right $ Scene number description items
 
-renderScene :: Scene -> Text
-renderScene scene =
+renderSceneV :: forall a. (a -> Text) -> SceneV [a] -> Text
+renderSceneV renderSceneItemF scene =
   Text.concat
     [ scenePrefixText
     , " "
@@ -302,7 +306,7 @@ renderScene scene =
     , ". "
     , scene ^. typed @SceneDescription . typed @Text
     , "\n\n"
-    , Text.intercalate "\n" $ fmap renderSceneItemUnnamed $ scene ^. typed @[SceneItemUnnamed]
+    , Text.intercalate "\n" $ fmap renderSceneItemF $ scene ^. typed @[a]
     ]
 
 data SceneItemError
@@ -359,15 +363,32 @@ renderSceneItemUnnamed (SceneItemUnnamedNote note) = renderTrails note
 renderSceneItemUnnamed (SceneItemUnnamedUnnamedDialog lines) = renderTrails lines
 renderSceneItemUnnamed (SceneItemUnnamedNamedDialog (NamedDialog actor lines)) = Text.concat [renderDialogActor actor, ".\n", renderTrails (lines)]
 
+renderSceneItem2 :: SceneItem2 -> Text
+renderSceneItem2 (SceneItem2Note note) = renderTrails note
+renderSceneItem2 (SceneItem2NamedDialog (NamedDialog actor lines)) = Text.concat [renderDialogActor actor, ".\n", renderTrails (lines)]
+
 renderDialogActor :: DialogActor -> Text
 renderDialogActor AllActors = "ALL"
 renderDialogActor (SingleActor t) = t
 renderDialogActor (TwoActors a1 a2) = Text.concat [a1, " and ", a2]
 
+data DialogNamingError
+  = UnnamedDialogWithoutPreviousNamedDialog [Trail]
+  deriving Show
+
+nameUnnamedDialog :: [SceneItemUnnamed] -> Either DialogNamingError [SceneItem2]
+nameUnnamedDialog = go Nothing
+  where
+  go _ [] = Right []
+  go s (SceneItemUnnamedNote x : xs) = go s xs >>= Right . (SceneItem2Note x :)
+  go _ (SceneItemUnnamedNamedDialog x@(NamedDialog a _) : xs) = go (Just a) xs >>= Right . (SceneItem2NamedDialog x :)
+  go Nothing (SceneItemUnnamedUnnamedDialog x : _) = Left $ UnnamedDialogWithoutPreviousNamedDialog x
+  go (Just a) (SceneItemUnnamedUnnamedDialog x : xs) = go (Just a) xs >>= Right . (SceneItem2NamedDialog (NamedDialog a x) :)
+
 newtype ActNumber = ActNumber Int deriving Generic
 data ActV a = Act ActNumber a deriving Generic
 type Act = ActV [Scene]
-type Act2 = ActV [SceneItem2]
+type Act2 = ActV [Scene2]
 
 newtype SceneNumber = SceneNumber Int deriving Generic
 newtype SceneDescription = SceneDescription Text deriving Generic
@@ -567,13 +588,13 @@ outline1Renderer =
     renderTrails
     (Text.intercalate endline . fmap renderTrails)
 
-fullRenderer :: OutlineRenderer Text Title Author Contents Actors [Act]
+fullRenderer :: OutlineRenderer Text Title Author Contents Actors [Act2]
 fullRenderer = outline1Renderer
   { outlineTitle = renderTitle
   , outlineAuthor = renderAuthor
   , outlineContents = renderContents
   , outlineActors = renderActors
-  , outlineActs = renderActs
+  , outlineActs = renderActsV (renderSceneV renderSceneItem2)
   }
 
 endline :: Text
