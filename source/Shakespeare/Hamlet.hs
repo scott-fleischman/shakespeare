@@ -365,18 +365,25 @@ renderDialogActor (SingleActor t) = t
 renderDialogActor (TwoActors a1 a2) = Text.concat [a1, " and ", a2]
 
 newtype ActNumber = ActNumber Int deriving Generic
-data Act = Act ActNumber [Scene] deriving Generic
+data ActV a = Act ActNumber a deriving Generic
+type Act = ActV [Scene]
+type Act2 = ActV [SceneItem2]
 
 newtype SceneNumber = SceneNumber Int deriving Generic
 newtype SceneDescription = SceneDescription Text deriving Generic
 data SceneV a = Scene SceneNumber SceneDescription a deriving Generic
 type Scene = SceneV [SceneItemUnnamed]
--- type Scene2 = SceneV [SceneItem]
+type Scene2 = SceneV [SceneItem2]
 
 data SceneItemUnnamed
   = SceneItemUnnamedNote [Trail]
   | SceneItemUnnamedNamedDialog NamedDialog
   | SceneItemUnnamedUnnamedDialog [Trail]
+  deriving (Generic, Show)
+
+data SceneItem2
+  = SceneItem2Note [Trail]
+  | SceneItem2NamedDialog NamedDialog
   deriving (Generic, Show)
 
 data NamedDialog = NamedDialog DialogActor [Trail] deriving (Generic, Show)
