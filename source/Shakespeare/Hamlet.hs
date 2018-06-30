@@ -251,7 +251,7 @@ scenePrefixText :: Text
 scenePrefixText = "SCENE"
 
 renderActs :: [Act] -> Text
-renderActs = renderActsV (renderSceneV renderSceneItemUnnamed)
+renderActs = renderActsV (renderSceneV $ Text.intercalate "\n" . fmap renderSceneItemUnnamed)
 
 renderActsV :: forall a. (SceneV a -> Text) -> [ActV [SceneV a]] -> Text
 renderActsV renderSceneF = Text.intercalate "\n" . fmap (renderActV renderSceneF)
@@ -297,16 +297,16 @@ parseScene input = do
     overLeft SceneErrorItem $ traverse parseSceneItem sceneItemTrails
   Right $ Scene number description items
 
-renderSceneV :: forall a. (a -> Text) -> SceneV [a] -> Text
-renderSceneV renderSceneItemF scene =
+renderSceneV :: forall a. (a -> Text) -> SceneV a -> Text
+renderSceneV renderSceneItemsF scene =
   Text.concat
     [ scenePrefixText
     , " "
-    , Text.Numeral.Roman.toRoman $ scene ^. typed @SceneNumber . typed @Int
+    , Text.Numeral.Roman.toRoman $ scene ^. position @1 . typed @Int
     , ". "
-    , scene ^. typed @SceneDescription . typed @Text
+    , scene ^. position @2 . typed @Text
     , "\n\n"
-    , Text.intercalate "\n" $ fmap renderSceneItemF $ scene ^. typed @[a]
+    , renderSceneItemsF $ scene ^. position @3
     ]
 
 data SceneItemError
@@ -594,7 +594,7 @@ fullRenderer = outline1Renderer
   , outlineAuthor = renderAuthor
   , outlineContents = renderContents
   , outlineActors = renderActors
-  , outlineActs = renderActsV (renderSceneV renderSceneItem2)
+  , outlineActs = renderActsV (renderSceneV $ Text.intercalate "\n" . fmap renderSceneItem2)
   }
 
 endline :: Text
