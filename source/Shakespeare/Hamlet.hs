@@ -363,6 +363,27 @@ renderSceneItemUnnamed (SceneItemUnnamedNote note) = renderTrails note
 renderSceneItemUnnamed (SceneItemUnnamedUnnamedDialog lines) = renderTrails lines
 renderSceneItemUnnamed (SceneItemUnnamedNamedDialog (NamedDialog actor lines)) = Text.concat [renderDialogActor actor, ".\n", renderTrails (lines)]
 
+renderSceneItem2List :: [SceneItem2] -> Text
+renderSceneItem2List = Text.intercalate "\n" . fmap renderSceneItemUnnamed . sceneItemNamedToUnnamed
+
+sceneItemNamedToUnnamed :: [SceneItem2] -> [SceneItemUnnamed]
+sceneItemNamedToUnnamed = go Nothing
+  where
+  go _ [] = []
+  go (Just actor1)
+    ( SceneItem2NamedDialog (NamedDialog actor2 lines2)
+    : xs
+    )
+    | actor1 == actor2
+    = SceneItemUnnamedUnnamedDialog lines2
+    : go (Just actor1) xs
+  go _ (x@(SceneItem2NamedDialog (NamedDialog actor _)) : xs) = simpleNamedToUnnamed x : go (Just actor) xs
+  go a (x@(SceneItem2Note _) : xs) = simpleNamedToUnnamed x : go a xs
+
+simpleNamedToUnnamed :: SceneItem2 -> SceneItemUnnamed
+simpleNamedToUnnamed (SceneItem2Note note) = SceneItemUnnamedNote note
+simpleNamedToUnnamed (SceneItem2NamedDialog (NamedDialog actor lines)) = SceneItemUnnamedNamedDialog (NamedDialog actor lines)
+
 renderSceneItem2 :: SceneItem2 -> Text
 renderSceneItem2 (SceneItem2Note note) = renderTrails note
 renderSceneItem2 (SceneItem2NamedDialog (NamedDialog actor lines)) = Text.concat [renderDialogActor actor, ".\n", renderTrails (lines)]
@@ -420,7 +441,7 @@ data DialogActor
   = SingleActor Text
   | TwoActors Text Text
   | AllActors
-  deriving (Generic, Show)
+  deriving (Eq, Generic, Show)
 
 data Actor
   = ActorMajor ActorLabel Trail
@@ -594,7 +615,7 @@ fullRenderer = outline1Renderer
   , outlineAuthor = renderAuthor
   , outlineContents = renderContents
   , outlineActors = renderActors
-  , outlineActs = renderActsV (renderSceneV $ Text.intercalate "\n" . fmap renderSceneItem2)
+  , outlineActs = renderActsV (renderSceneV renderSceneItem2List)
   }
 
 endline :: Text
