@@ -96,13 +96,13 @@ writeDialogDebugFiles outline = do
   Text.Lazy.IO.writeFile "hamlet-dialog-named-punctuation.txt" formattedNamedDialog
 
 getSceneNotes :: [Act] -> [[Trail]]
-getSceneNotes = Lens.toListOf (traverse . _Ctor @"SceneNote") . flattenSceneItems
+getSceneNotes = Lens.toListOf (traverse . _Ctor @"SceneItemUnnamedNote") . flattenSceneItems
 
 getSceneUnnamedDialog :: [Act] -> [[Trail]]
-getSceneUnnamedDialog = Lens.toListOf (traverse . _Ctor @"SceneUnnamedDialog") . flattenSceneItems
+getSceneUnnamedDialog = Lens.toListOf (traverse . _Ctor @"SceneItemUnnamedUnnamedDialog") . flattenSceneItems
 
 getSceneNamedDialog :: [Act] -> [[Trail]]
-getSceneNamedDialog = Lens.toListOf (traverse . _Ctor @"SceneNamedDialog" . typed @[Trail]) . flattenSceneItems
+getSceneNamedDialog = Lens.toListOf (traverse . _Ctor @"SceneItemUnnamedNamedDialog" . typed @[Trail]) . flattenSceneItems
 
 formatTrails :: [[Trail]] -> [Text.Lazy.Text]
 formatTrails = fmap (flip Text.Lazy.append "\n" . Text.Lazy.intercalate "\n" . fmap (formatLine . trailLine))
@@ -316,22 +316,22 @@ parseSceneItem [] = Left EmptySceneItem
 parseSceneItem (single : []) =
   let line = (lineText . trailLine) single
   in case Text.stripPrefix " " line of
-    Nothing -> Right $ SceneUnnamedDialog [single]
-    Just _ -> Right $ SceneNote [single]
+    Nothing -> Right $ SceneItemUnnamedUnnamedDialog [single]
+    Just _ -> Right $ SceneItemUnnamedNote [single]
 parseSceneItem (initial : rest) =
   let initialText = lineText . trailLine $ initial
   in if Text.isPrefixOf " " initialText
     then
       if isPoetry $ fmap (Lens.view $ field @"trailLine" . field @"lineText") (initial : rest)
-        then Right $ SceneUnnamedDialog (initial : rest)
-        else Right $ SceneNote (initial : rest)
+        then Right $ SceneItemUnnamedUnnamedDialog (initial : rest)
+        else Right $ SceneItemUnnamedNote (initial : rest)
     else
       let isCapsWord = Text.all (\x -> Char.isUpper x || x == '.')
       in if (all (\x -> x == "and" || isCapsWord x) . Text.words) initialText
         then do
           actor <- parseDialogActor $ initial ^. typed @Line
-          Right $ SceneNamedDialog $ NamedDialog actor rest
-        else Right $ SceneUnnamedDialog (initial : rest)
+          Right $ SceneItemUnnamedNamedDialog $ NamedDialog actor rest
+        else Right $ SceneItemUnnamedUnnamedDialog (initial : rest)
 
 parseDialogActor :: Line -> Either SceneItemError DialogActor
 parseDialogActor line@(Line _ raw) = do
@@ -355,9 +355,9 @@ isPoetry = isPoeticIndent . Set.fromList . fmap (Text.length . Text.takeWhile Ch
     && Foldable.all (> 0) indentLengths
 
 renderSceneItemUnnamed :: SceneItemUnnamed -> Text
-renderSceneItemUnnamed (SceneNote note) = renderTrails note
-renderSceneItemUnnamed (SceneUnnamedDialog lines) = renderTrails lines
-renderSceneItemUnnamed (SceneNamedDialog (NamedDialog actor lines)) = Text.concat [renderDialogActor actor, ".\n", renderTrails (lines)]
+renderSceneItemUnnamed (SceneItemUnnamedNote note) = renderTrails note
+renderSceneItemUnnamed (SceneItemUnnamedUnnamedDialog lines) = renderTrails lines
+renderSceneItemUnnamed (SceneItemUnnamedNamedDialog (NamedDialog actor lines)) = Text.concat [renderDialogActor actor, ".\n", renderTrails (lines)]
 
 renderDialogActor :: DialogActor -> Text
 renderDialogActor AllActors = "ALL"
@@ -369,12 +369,14 @@ data Act = Act ActNumber [Scene] deriving Generic
 
 newtype SceneNumber = SceneNumber Int deriving Generic
 newtype SceneDescription = SceneDescription Text deriving Generic
-data Scene = Scene SceneNumber SceneDescription [SceneItemUnnamed] deriving Generic
+data SceneV a = Scene SceneNumber SceneDescription a deriving Generic
+type Scene = SceneV [SceneItemUnnamed]
+-- type Scene2 = SceneV [SceneItem]
 
 data SceneItemUnnamed
-  = SceneNote [Trail]
-  | SceneNamedDialog NamedDialog
-  | SceneUnnamedDialog [Trail]
+  = SceneItemUnnamedNote [Trail]
+  | SceneItemUnnamedNamedDialog NamedDialog
+  | SceneItemUnnamedUnnamedDialog [Trail]
   deriving (Generic, Show)
 
 data NamedDialog = NamedDialog DialogActor [Trail] deriving (Generic, Show)
