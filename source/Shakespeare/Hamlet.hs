@@ -342,7 +342,6 @@ parseDialogActor line@(Line _ raw) = do
   case Text.words simple of
     [t]
       | Text.toLower t == "all" -> Right $ AllActors
-      | Text.toLower t == "both" -> Right $ BothActors
       | otherwise -> Right $ SingleActor t
     [_, _] -> Right $ SingleActor simple
     [w1, w2, w3] | Text.toLower w2 == "and" -> Right $ TwoActors w1 w3
@@ -362,7 +361,6 @@ renderSceneItem (SceneNamedDialog (NamedDialog actor lines)) = Text.concat [rend
 
 renderDialogActor :: DialogActor -> Text
 renderDialogActor AllActors = "ALL"
-renderDialogActor BothActors = "BOTH"
 renderDialogActor (SingleActor t) = t
 renderDialogActor (TwoActors a1 a2) = Text.concat [a1, " and ", a2]
 
@@ -391,7 +389,6 @@ newtype ActorLabel = ActorLabel Text deriving (Eq, Ord, Generic)
 data DialogActor
   = SingleActor Text
   | TwoActors Text Text
-  | BothActors
   | AllActors
   deriving (Generic, Show)
 
