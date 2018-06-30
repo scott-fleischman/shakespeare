@@ -107,8 +107,8 @@ getSceneNamedDialog = Lens.toListOf (traverse . _Ctor @"SceneNamedDialog" . type
 formatTrails :: [[Trail]] -> [Text.Lazy.Text]
 formatTrails = fmap (flip Text.Lazy.append "\n" . Text.Lazy.intercalate "\n" . fmap (formatLine . trailLine))
 
-flattenSceneItems :: [Act] -> [SceneItem]
-flattenSceneItems = Lens.toListOf (traverse . typed @[Scene] . traverse . typed @[SceneItem] . traverse)
+flattenSceneItems :: [Act] -> [SceneItemUnnamed]
+flattenSceneItems = Lens.toListOf (traverse . typed @[Scene] . traverse . typed @[SceneItemUnnamed] . traverse)
 
 formatAct :: Act -> Text.Lazy.Text
 formatAct act = Formatting.format
@@ -123,7 +123,7 @@ formatScene scene =
     ("Scene " % Formatting.int % ". " % Formatting.stext % "\n  " % Formatting.text)
     (scene ^. typed @SceneNumber . typed @Int)
     (scene ^. typed @SceneDescription . typed @Text)
-    (Text.Lazy.intercalate "\n" $ fmap (Formatting.format ("  " % Formatting.shown)) $ take 5 $ scene ^. typed @[SceneItem])
+    (Text.Lazy.intercalate "\n" $ fmap (Formatting.format ("  " % Formatting.shown)) $ take 5 $ scene ^. typed @[SceneItemUnnamed])
 
 formatActor :: Actor -> Text.Lazy.Text
 formatActor (ActorMajor (ActorLabel label) t) = Formatting.format (Formatting.right 13 ' ' % Formatting.stext % " ") label (renderTrail t)
@@ -302,7 +302,7 @@ renderScene scene =
     , ". "
     , scene ^. typed @SceneDescription . typed @Text
     , "\n\n"
-    , Text.intercalate "\n" $ fmap renderSceneItem $ scene ^. typed @[SceneItem]
+    , Text.intercalate "\n" $ fmap renderSceneItemUnnamed $ scene ^. typed @[SceneItemUnnamed]
     ]
 
 data SceneItemError
@@ -311,7 +311,7 @@ data SceneItemError
   | InvalidDialogActor Line
   deriving (Show, Generic)
 
-parseSceneItem :: [Trail] -> Either SceneItemError SceneItem
+parseSceneItem :: [Trail] -> Either SceneItemError SceneItemUnnamed
 parseSceneItem [] = Left EmptySceneItem
 parseSceneItem (single : []) =
   let line = (lineText . trailLine) single
@@ -354,10 +354,10 @@ isPoetry = isPoeticIndent . Set.fromList . fmap (Text.length . Text.takeWhile Ch
     = Set.size indentLengths >= 2
     && Foldable.all (> 0) indentLengths
 
-renderSceneItem :: SceneItem -> Text
-renderSceneItem (SceneNote note) = renderTrails note
-renderSceneItem (SceneUnnamedDialog lines) = renderTrails lines
-renderSceneItem (SceneNamedDialog (NamedDialog actor lines)) = Text.concat [renderDialogActor actor, ".\n", renderTrails (lines)]
+renderSceneItemUnnamed :: SceneItemUnnamed -> Text
+renderSceneItemUnnamed (SceneNote note) = renderTrails note
+renderSceneItemUnnamed (SceneUnnamedDialog lines) = renderTrails lines
+renderSceneItemUnnamed (SceneNamedDialog (NamedDialog actor lines)) = Text.concat [renderDialogActor actor, ".\n", renderTrails (lines)]
 
 renderDialogActor :: DialogActor -> Text
 renderDialogActor AllActors = "ALL"
@@ -369,9 +369,9 @@ data Act = Act ActNumber [Scene] deriving Generic
 
 newtype SceneNumber = SceneNumber Int deriving Generic
 newtype SceneDescription = SceneDescription Text deriving Generic
-data Scene = Scene SceneNumber SceneDescription [SceneItem] deriving Generic
+data Scene = Scene SceneNumber SceneDescription [SceneItemUnnamed] deriving Generic
 
-data SceneItem
+data SceneItemUnnamed
   = SceneNote [Trail]
   | SceneNamedDialog NamedDialog
   | SceneUnnamedDialog [Trail]
