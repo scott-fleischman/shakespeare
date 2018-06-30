@@ -14,6 +14,9 @@ import qualified Data.Char as Char
 import qualified Data.Foldable as Foldable
 import           Data.Generics.Product (field, position, typed)
 import           Data.Generics.Sum (_Ctor, _Typed)
+import qualified Data.List as List
+import qualified Data.Map.Lazy as Map
+import qualified Data.Ord as Ord
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import qualified Data.Text as Text
@@ -36,6 +39,36 @@ main = do
   Text.Lazy.IO.putStrLn $ Formatting.format ("content acts count: " % Formatting.shown) (length . (\(Contents acts) -> acts) $ outlineContents outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length . (\(Actors actors _) -> actors) $ outlineActors outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
+
+  writeActorLineCounts outline
+
+writeActorLineCounts :: Outline3 -> IO ()
+writeActorLineCounts outline = do
+  let
+    namedDialogs
+      = Lens.toListOf
+        ( typed @[Act2]
+        . traverse
+        . typed @[Scene2]
+        . traverse
+        . typed @[SceneItem2]
+        . traverse
+        . _Ctor @"SceneItem2NamedDialog"
+        )
+        $ outline
+    toPair (NamedDialog actor lines) = (actor, length lines)
+    actorLineCounts = Map.toList . Map.fromListWith (+) $ fmap toPair namedDialogs
+    descendingActors = List.sortBy (Ord.comparing $ Ord.Down . snd) actorLineCounts
+    output = Text.Lazy.unlines $
+      fmap
+        (\(actor, lines) ->
+          Formatting.format
+            ((Formatting.right 30 ' ' %. Formatting.stext) % Formatting.shown)
+          (renderDialogActor actor)
+          lines
+        )
+        descendingActors
+  Text.Lazy.IO.writeFile "hamlet-line-counts.txt" output
 
 writeDialogDebugFiles :: Outline2 -> IO ()
 writeDialogDebugFiles outline = do
@@ -441,7 +474,7 @@ data DialogActor
   = SingleActor Text
   | TwoActors Text Text
   | AllActors
-  deriving (Eq, Generic, Show)
+  deriving (Eq, Generic, Ord, Show)
 
 data Actor
   = ActorMajor ActorLabel Trail

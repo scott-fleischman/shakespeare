@@ -1,0 +1,39 @@
+HAMLET                        1388
+KING                          549
+POLONIUS                      345
+HORATIO                       282
+LAERTES                       208
+OPHELIA                       170
+QUEEN                         156
+GHOST                         94
+ROSENCRANTZ                   84
+FIRST CLOWN                   81
+MARCELLUS                     61
+FIRST PLAYER                  50
+GUILDENSTERN                  47
+PLAYER KING                   45
+OSRIC                         42
+BARNARDO                      33
+PLAYER QUEEN                  30
+FORTINBRAS                    27
+GENTLEMAN                     25
+VOLTEMAND                     22
+REYNALDO                      14
+SECOND CLOWN                  14
+PRIEST                        13
+CAPTAIN                       12
+FRANCISCO                     9
+FIRST AMBASSADOR              6
+LORD                          6
+LUCIANUS                      6
+MESSENGER                     5
+FIRST SAILOR                  4
+MARCELLUS and BARNARDO        4
+ROSENCRANTZ and GUILDENSTERN  4
+DANES                         3
+PROLOGUE                      3
+HORATIO and MARCELLUS         3
+ALL                           3
+SERVANT                       1
+CORNELIUS and VOLTEMAND       1
+OSRIC and LORDS               1
