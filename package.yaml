@@ -4,6 +4,7 @@ version: 0.1.0
 dependencies:
 - aeson
 - base
+- bytestring
 - containers
 - formatting
 - generic-lens
@@ -31,8 +32,16 @@ executables:
     other-modules: []
     dependencies:
     - authenticate-oauth
-    - bytestring
     - twitter-conduit
+  post-tweets:
+    source-dirs: app
+    main: PostTweets.hs
+    other-modules: []
+    dependencies:
+    - logging
+    - shakespeare
+    - twitter-conduit
+    - twitter-types
 
 tests:
   hamlet-test:
