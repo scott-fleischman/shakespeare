@@ -45,7 +45,7 @@ main = do
 
   let book = makeTwitterBook outline
   printTwitterBookStats book
-  Aeson.encodeFile "hamlet-twitter-book.json" book
+  Aeson.encodeFile "book.json" book
 
 printTwitterBookStats :: Twitter.Book -> IO ()
 printTwitterBookStats book = do
@@ -124,7 +124,13 @@ getTweetAuthor AllActors = narratorName
 getTweetAuthor (TwoActors x _) = Text.toLower x
 
 maxTweetLength :: Int
-maxTweetLength = 240
+maxTweetLength = longestTweet - replyPrefix
+  where
+  longestTweet = 280
+  replyPrefix = maxHandleLength + atSymbol + space
+  maxHandleLength = 15
+  atSymbol = 1
+  space = 1
 
 breakLinesIntoTweets :: [Text] -> [Text]
 breakLinesIntoTweets [] = []
