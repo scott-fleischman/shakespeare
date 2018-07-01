@@ -18,6 +18,7 @@ import           Data.Generics.Sum (_Ctor, _Typed)
 import qualified Data.List as List
 import qualified Data.Map.Lazy as Map
 import qualified Data.Ord as Ord
+import           Data.Set (Set)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import qualified Data.Text as Text
@@ -49,8 +50,16 @@ main = do
 printTwitterBookStats :: Twitter.Book -> IO ()
 printTwitterBookStats book = do
   Formatting.fprint ("Twitter thread count: " % Formatting.shown % "\n") (length $ book ^. typed @[Twitter.Thread])
-  Formatting.fprint ("Total tweet count: " % Formatting.shown % "\n")
-    (length $ Lens.toListOf (typed @[Twitter.Thread] . traverse . typed @[Twitter.Tweet] . traverse) book)
+  let tweets = Lens.toListOf (typed @[Twitter.Thread] . traverse . typed @[Twitter.Tweet] . traverse) book
+  Formatting.fprint ("Total tweet count: " % Formatting.shown % "\n") (length tweets)
+  let
+    authorTweets
+      = List.sortBy (Ord.comparing $ Ord.Down . snd)
+      . Map.toList
+      . Map.fromListWith (+)
+      . fmap (\x -> (x ^. position @1, 1 :: Int))
+      $ tweets
+  mapM_ (uncurry $ Formatting.fprint $ (Formatting.right 14 ' ' %. Formatting.stext) % Formatting.shown % "\n") authorTweets
 
 makeTwitterBook :: Outline3 -> Twitter.Book
 makeTwitterBook = Twitter.Book . concatMap makeActThread . (Lens.view $ typed @[Act2])
@@ -81,9 +90,33 @@ makeSceneItemTweets (SceneItem2Note note) =
     (Twitter.Tweet narratorName)
     (breakLinesIntoTweets $ Lens.toListOf (traverse . typed @Line . typed @Text) note)
 makeSceneItemTweets (SceneItem2NamedDialog (NamedDialog actor lines)) =
-  fmap
-    (Twitter.Tweet $ getTweetAuthor $ actor)
-    (breakLinesIntoTweets $ Lens.toListOf (traverse . typed @Line . typed @Text) lines)
+  let
+    rawAuthor = getTweetAuthor actor
+    isAccountActor = Set.member rawAuthor accountActorSet
+    rawLines = Lens.toListOf (traverse . typed @Line . typed @Text) lines
+    finalLines = if isAccountActor then rawLines else renderDialogActor actor : rawLines
+    finalAuthor = if isAccountActor then rawAuthor else fallbackAuthorName
+  in
+    fmap
+      (Twitter.Tweet finalAuthor)
+      (breakLinesIntoTweets finalLines)
+
+accountActorSet :: Set Text
+accountActorSet = Set.fromList
+  [ "hamlet"
+  , "king"
+  , "polonius"
+  , "horatio"
+  , "laertes"
+  , "ophelia"
+  , "queen"
+  , "ghost"
+  , "rosencrantz"
+  , "guildenstern"
+  ]
+
+fallbackAuthorName :: Text
+fallbackAuthorName = "rest"
 
 getTweetAuthor :: DialogActor -> Text
 getTweetAuthor (SingleActor x) = Text.toLower x
@@ -457,7 +490,7 @@ isPoetry = isPoeticIndent . Set.fromList . fmap (Text.length . Text.takeWhile Ch
 renderSceneItemUnnamed :: SceneItemUnnamed -> Text
 renderSceneItemUnnamed (SceneItemUnnamedNote note) = renderTrails note
 renderSceneItemUnnamed (SceneItemUnnamedUnnamedDialog lines) = renderTrails lines
-renderSceneItemUnnamed (SceneItemUnnamedNamedDialog (NamedDialog actor lines)) = Text.concat [renderDialogActor actor, ".\n", renderTrails (lines)]
+renderSceneItemUnnamed (SceneItemUnnamedNamedDialog (NamedDialog actor lines)) = Text.concat [renderDialogActor actor, "\n", renderTrails (lines)]
 
 renderSceneItem2List :: [SceneItem2] -> Text
 renderSceneItem2List = Text.intercalate "\n" . fmap renderSceneItemUnnamed . sceneItemNamedToUnnamed
@@ -482,12 +515,12 @@ simpleNamedToUnnamed (SceneItem2NamedDialog (NamedDialog actor lines)) = SceneIt
 
 renderSceneItem2 :: SceneItem2 -> Text
 renderSceneItem2 (SceneItem2Note note) = renderTrails note
-renderSceneItem2 (SceneItem2NamedDialog (NamedDialog actor lines)) = Text.concat [renderDialogActor actor, ".\n", renderTrails (lines)]
+renderSceneItem2 (SceneItem2NamedDialog (NamedDialog actor lines)) = Text.concat [renderDialogActor actor, "\n", renderTrails (lines)]
 
 renderDialogActor :: DialogActor -> Text
-renderDialogActor AllActors = "ALL"
-renderDialogActor (SingleActor t) = t
-renderDialogActor (TwoActors a1 a2) = Text.concat [a1, " and ", a2]
+renderDialogActor AllActors = "ALL."
+renderDialogActor (SingleActor t) = Text.append t "."
+renderDialogActor (TwoActors a1 a2) = Text.concat [a1, " and ", a2, "."]
 
 data DialogNamingError
   = UnnamedDialogWithoutPreviousNamedDialog [Trail]
