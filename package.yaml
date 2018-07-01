@@ -2,6 +2,7 @@ name: shakespeare
 version: 0.1.0
 
 dependencies:
+- aeson
 - base
 - containers
 - formatting

@@ -10,6 +10,7 @@ module Shakespeare.Hamlet where
 import           Control.Lens ((^.))
 import qualified Control.Lens as Lens
 import           Control.Monad ((>=>))
+import qualified Data.Aeson as Aeson
 import qualified Data.Char as Char
 import qualified Data.Foldable as Foldable
 import           Data.Generics.Product (field, position, typed)
@@ -27,6 +28,7 @@ import           Formatting ((%), (%.))
 import qualified Formatting
 import           GHC.Generics (Generic)
 import           Prelude hiding (lines)
+import qualified Shakespeare.Twitter as Twitter
 import qualified Text.Numeral.Roman
 
 main :: IO ()
@@ -40,7 +42,63 @@ main = do
   Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length . (\(Actors actors _) -> actors) $ outlineActors outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
 
-  writeActorLineCounts outline
+  writeTwitterBook outline
+
+writeTwitterBook :: Outline3 -> IO ()
+writeTwitterBook = Aeson.encodeFile "hamlet-twitter-book.json" . makeTwitterBook
+
+makeTwitterBook :: Outline3 -> Twitter.Book
+makeTwitterBook = Twitter.Book . concatMap makeActThread . (Lens.view $ typed @[Act2])
+
+makeActThread :: Act2 -> [Twitter.Thread]
+makeActThread act = fmap (makeSceneThread act) $ act ^. typed @[Scene2]
+
+narratorName :: Text
+narratorName = "narrator"
+
+makeSceneThread :: Act2 -> Scene2 -> Twitter.Thread
+makeSceneThread act scene =
+  Twitter.Thread
+    $ Twitter.Tweet narratorName sceneTweet
+    : concatMap makeSceneItemTweets (scene ^. typed @[SceneItem2])
+  where
+  sceneTweet = Formatting.sformat
+    ( "#Hamlet Act " % Formatting.stext % ".\n"
+    % "Scene " % Formatting.stext % ". " % Formatting.stext
+    )
+    (Text.Numeral.Roman.toRoman (act ^. typed @ActNumber . typed @Int))
+    (Text.Numeral.Roman.toRoman (scene ^. typed @SceneNumber . typed @Int))
+    (scene ^. typed @SceneDescription . typed @Text)
+
+makeSceneItemTweets :: SceneItem2 -> [Twitter.Tweet]
+makeSceneItemTweets (SceneItem2Note note) =
+  fmap
+    (Twitter.Tweet narratorName)
+    (breakLinesIntoTweets $ Lens.toListOf (traverse . typed @Line . typed @Text) note)
+makeSceneItemTweets (SceneItem2NamedDialog (NamedDialog actor lines)) =
+  fmap
+    (Twitter.Tweet $ getTweetAuthor $ actor)
+    (breakLinesIntoTweets $ Lens.toListOf (traverse . typed @Line . typed @Text) lines)
+
+getTweetAuthor :: DialogActor -> Text
+getTweetAuthor (SingleActor x) = Text.toLower x
+getTweetAuthor AllActors = narratorName
+getTweetAuthor (TwoActors x _) = Text.toLower x
+
+maxTweetLength :: Int
+maxTweetLength = 240
+
+breakLinesIntoTweets :: [Text] -> [Text]
+breakLinesIntoTweets [] = []
+breakLinesIntoTweets (x : xs) = go x xs
+  where
+  go :: Text -> [Text] -> [Text]
+  go soFar [] = [soFar]
+  go soFar (y : ys) =
+    let extra = Text.concat [soFar, "\n", y]
+    in if Text.length extra > maxTweetLength
+      then soFar : go y ys
+      else go extra ys
 
 writeActorLineCounts :: Outline3 -> IO ()
 writeActorLineCounts outline = do
