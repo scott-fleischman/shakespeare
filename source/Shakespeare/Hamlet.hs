@@ -42,10 +42,15 @@ main = do
   Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length . (\(Actors actors _) -> actors) $ outlineActors outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
 
-  writeTwitterBook outline
+  let book = makeTwitterBook outline
+  printTwitterBookStats book
+  Aeson.encodeFile "hamlet-twitter-book.json" book
 
-writeTwitterBook :: Outline3 -> IO ()
-writeTwitterBook = Aeson.encodeFile "hamlet-twitter-book.json" . makeTwitterBook
+printTwitterBookStats :: Twitter.Book -> IO ()
+printTwitterBookStats book = do
+  Formatting.fprint ("Twitter thread count: " % Formatting.shown % "\n") (length $ book ^. typed @[Twitter.Thread])
+  Formatting.fprint ("Total tweet count: " % Formatting.shown % "\n")
+    (length $ Lens.toListOf (typed @[Twitter.Thread] . traverse . typed @[Twitter.Tweet] . traverse) book)
 
 makeTwitterBook :: Outline3 -> Twitter.Book
 makeTwitterBook = Twitter.Book . concatMap makeActThread . (Lens.view $ typed @[Act2])
