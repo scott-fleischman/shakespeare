@@ -2,3 +2,7 @@
 *.cabal
 
 hamlet-twitter-book.json
+hamlet-twitter-config.json
+
+book.json
+config.json
