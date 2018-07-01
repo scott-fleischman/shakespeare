@@ -1,0 +1,62 @@
+Hamlet example cast
+
+* Hamlet, Prince of Denmark
+* Claudius, the King
+* Gertrude, the Queen
+* Polonius
+* Ophelia
+* Laertes
+* Horatio
+* Rosencrantz
+* Guildernstern
+* Ghost of Hamlet's Father
+
+* Osric, Francisco, Player Queen, Priest
+* Marcellus, Voltemand, Lucianus, Other Gravedigger
+* Barnardo, Reynaldo, Player King, Gravedigger
+
+
+HAMLET                        1388
+KING                          549
+QUEEN                         156
+POLONIUS                      345
+OPHELIA                       170
+LAERTES                       208
+HORATIO                       282
+ROSENCRANTZ                   84
+GUILDENSTERN                  47
+GHOST                         94
+
+OSRIC                         42
+FRANCISCO                     9
+PLAYER QUEEN                  30
+PRIEST                        13
+
+MARCELLUS                     61
+VOLTEMAND                     22
+LUCIANUS                      6
+
+BARNARDO                      33
+REYNALDO                      14
+PLAYER KING                   45
+
+
+FIRST CLOWN                   81
+FIRST PLAYER                  50
+FORTINBRAS                    27
+GENTLEMAN                     25
+SECOND CLOWN                  14
+CAPTAIN                       12
+FIRST AMBASSADOR              6
+LORD                          6
+MESSENGER                     5
+FIRST SAILOR                  4
+MARCELLUS and BARNARDO        4
+ROSENCRANTZ and GUILDENSTERN  4
+DANES                         3
+PROLOGUE                      3
+HORATIO and MARCELLUS         3
+ALL                           3
+SERVANT                       1
+CORNELIUS and VOLTEMAND       1
+OSRIC and LORDS               1
