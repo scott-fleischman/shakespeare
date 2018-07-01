@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
@@ -7,6 +8,7 @@
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 
 import qualified Shakespeare.Twitter
+import qualified Control.Concurrent as Concurrent
 import qualified Control.Exception as Exception
 import           Control.Lens ((^.))
 import qualified Control.Lens as Lens
@@ -15,16 +17,26 @@ import qualified Control.Monad as Monad
 import qualified Data.Aeson as Aeson
 import           Data.Generics.Product (field, typed)
 import qualified Data.Maybe as Maybe
+import           Data.Map.Lazy (Map)
 import qualified Data.Map.Lazy as Map
 import           Data.Semigroup ((<>))
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text.Encoding
+import           GHC.Generics (Generic)
+import           Formatting ((%))
 import qualified Formatting
+import qualified Network.HTTP.Client as HTTP.Client
 import qualified Web.Twitter.Conduit as Twitter.Conduit
 import qualified Web.Twitter.Conduit.Parameters as Twitter.Conduit.Parameters
 import qualified Web.Twitter.Types as Twitter.Types
+
+data Env = Env
+  { envNameToTWInfo :: Map Text Twitter.Conduit.TWInfo
+  , envTweetDelayMilliseconds :: Int
+  , envManager :: HTTP.Client.Manager
+  } deriving Generic
 
 main :: IO ()
 main = Logging.withStdoutLogging $ do
@@ -68,39 +80,47 @@ main = Logging.withStdoutLogging $ do
       mapM_ Logging.log $ Set.toList authorMismatches
       error "Missing names in config"
 
-  _manager <- Twitter.Conduit.newManager Twitter.Conduit.tlsManagerSettings
+  manager <- Twitter.Conduit.newManager Twitter.Conduit.tlsManagerSettings
+  let env = Env nameToTWInfo (config ^. field @"tweetDelayMilliseconds") manager
 
-  return ()
---   let timerConf = Async.Timer.timerConfSetInterval tweetInterval Async.Timer.defaultTimerConf
---   Async.Timer.withAsyncTimer timerConf $ \timer ->
---     Monad.forever $ do
---       randomTweets <- Random.Shuffle.shuffleM tweetThreads
---       Monad.forM_ randomTweets $ \thread -> do
---         Async.Timer.timerWait timer
---         tryPostThread manager thread
+  Monad.forM_ (book ^. field @"threads") $ \thread -> do
+    tryPostThread env thread
+    makeDelay env
 
--- tryPostThread :: Twitter.Conduit.Manager -> Alice.Tweets.TweetThread -> IO ()
--- tryPostThread manager thread = do
---   possibleResult <- Exception.try @Exception.SomeException (postThread manager thread)
---   case possibleResult of
---     Left err -> Logging.warn (Text.pack . show $ err)
---     Right () -> return ()
+makeDelay :: Env -> IO ()
+makeDelay env = Concurrent.threadDelay (envTweetDelayMilliseconds env * 1000)
 
--- postThread :: Twitter.Conduit.Manager -> Alice.Tweets.TweetThread -> IO ()
--- postThread manager (Alice.Tweets.TweetThread tweets) = go Nothing tweets
---   where
---   go _ [] = return ()
---   go parent (tweet : rest) = do
---     status <- postStatus manager parent tweet
---     let statusId = Twitter.Types.statusId status
---     go (Just statusId) rest
+tryPostThread :: Env -> Shakespeare.Twitter.Thread -> IO ()
+tryPostThread env thread = do
+  possibleResult <- Exception.try @Exception.SomeException (postThread env thread)
+  case possibleResult of
+    Left err -> Logging.warn $ Formatting.sformat Formatting.shown err
+    Right () -> return ()
 
--- postStatus :: Twitter.Conduit.Manager -> Maybe Twitter.Types.StatusId -> Text -> IO Twitter.Types.Status
--- postStatus manager parent status = do
---   Logging.log $ "Post: " <> status
---   twInfo <- getTWInfoFromEnv
---   let
---     baseStatus = Twitter.Conduit.update status
---     statusWithParent = Lens.set Twitter.Conduit.Parameters.inReplyToStatusId parent baseStatus
---   response <- Twitter.Conduit.call twInfo manager statusWithParent
---   return response
+postThread :: Env -> Shakespeare.Twitter.Thread -> IO ()
+postThread env (Shakespeare.Twitter.Thread tweets) = go Nothing tweets
+  where
+  go _ [] = return ()
+  go parent (tweet : rest) = do
+    status <- postStatus env parent tweet
+    let statusId = Twitter.Types.statusId status
+    go (Just statusId) rest
+
+postStatus :: Env -> Maybe Twitter.Types.StatusId -> Shakespeare.Twitter.Tweet -> IO Twitter.Types.Status
+postStatus env parent tweet = do
+  let
+    authorName = tweet ^. field @"author"
+    status = tweet ^. field @"text"
+  twInfo <-
+    case Map.lookup authorName (envNameToTWInfo env) of
+      Nothing -> do
+        Logging.log $ Formatting.sformat ("Missing author: " % Formatting.stext) authorName
+        fail "Missing author"
+      Just x -> return x
+  Logging.log $ Formatting.sformat ("Tweet: " % Formatting.stext % ": " % Formatting.stext) authorName status
+  let
+    baseStatus = Twitter.Conduit.update status
+    statusWithParent = Lens.set Twitter.Conduit.Parameters.inReplyToStatusId parent baseStatus
+  response <- Twitter.Conduit.call twInfo (envManager env) statusWithParent
+  makeDelay env
+  return response

@@ -37,7 +37,12 @@ executables:
     source-dirs: app
     main: PostTweets.hs
     other-modules: []
+    ghc-options:
+    - -O2
+    - -threaded
+    - -rtsopts
     dependencies:
+    - http-client
     - logging
     - shakespeare
     - twitter-conduit
