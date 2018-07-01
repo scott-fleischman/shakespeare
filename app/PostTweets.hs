@@ -9,13 +9,14 @@
 
 import qualified Shakespeare.Twitter
 import qualified Control.Concurrent as Concurrent
-import qualified Control.Exception as Exception
-import           Control.Lens ((^.))
+import qualified Control.Exception.Safe as Exception.Safe
+import           Control.Lens ((^.), (^?))
 import qualified Control.Lens as Lens
 import qualified Control.Logging as Logging
 import qualified Control.Monad as Monad
 import qualified Data.Aeson as Aeson
 import           Data.Generics.Product (field, typed)
+import           Data.Generics.Sum (_Ctor)
 import qualified Data.Maybe as Maybe
 import           Data.Map.Lazy (Map)
 import qualified Data.Map.Lazy as Map
@@ -32,8 +33,13 @@ import qualified Web.Twitter.Conduit as Twitter.Conduit
 import qualified Web.Twitter.Conduit.Parameters as Twitter.Conduit.Parameters
 import qualified Web.Twitter.Types as Twitter.Types
 
+data UserInfo = UserInfo
+  { userInfoHandle :: Text
+  , userInfoTWInfo :: Twitter.Conduit.TWInfo
+  } deriving Generic
+
 data Env = Env
-  { envNameToTWInfo :: Map Text Twitter.Conduit.TWInfo
+  { envNameToTWInfo :: Map Text UserInfo
   , envTweetDelayMilliseconds :: Int
   , envManager :: HTTP.Client.Manager
   } deriving Generic
@@ -54,15 +60,20 @@ main = Logging.withStdoutLogging $ do
       , Twitter.Conduit.oauthConsumerSecret = Text.Encoding.encodeUtf8 $ appInfo ^. field @"secret"
       }
 
-    makeCred :: Shakespeare.Twitter.TokenInfo -> Twitter.Conduit.Credential
+    makeCred :: Shakespeare.Twitter.UserInfo -> Twitter.Conduit.Credential
     makeCred tokenInfo =
       Twitter.Conduit.Credential
       [ ("oauth_token",         Text.Encoding.encodeUtf8 $ tokenInfo ^. field @"token")
       , ("oauth_token_secret",  Text.Encoding.encodeUtf8 $ tokenInfo ^. field @"secret")
       ]
 
-    makeTWInfo = (\cred -> Twitter.Conduit.setCredential oauth cred Twitter.Conduit.def) . makeCred 
-    nameToTWInfo = fmap makeTWInfo $ config ^. field @"accounts"
+    makeUserInfo userInfo
+      = (\cred ->
+        UserInfo
+          (userInfo ^. field @"handle")
+          (Twitter.Conduit.setCredential oauth cred Twitter.Conduit.def))
+      $ makeCred userInfo
+    nameToUserInfo = fmap makeUserInfo $ config ^. field @"accounts"
 
   Logging.log "Loading book.json"
   book <- Aeson.eitherDecodeFileStrict @Shakespeare.Twitter.Book "book.json" >>= 
@@ -72,7 +83,7 @@ main = Logging.withStdoutLogging $ do
 
   let
     allAuthors = Set.fromList $ Lens.toListOf (field @"threads" . traverse . field @"tweets" . traverse . field @"author") book
-    authorMismatches = Set.filter (flip Map.notMember nameToTWInfo) allAuthors
+    authorMismatches = Set.filter (flip Map.notMember nameToUserInfo) allAuthors
   if Set.null authorMismatches
     then return ()
     else do
@@ -81,7 +92,7 @@ main = Logging.withStdoutLogging $ do
       error "Missing names in config"
 
   manager <- Twitter.Conduit.newManager Twitter.Conduit.tlsManagerSettings
-  let env = Env nameToTWInfo (config ^. field @"tweetDelayMilliseconds") manager
+  let env = Env nameToUserInfo (config ^. field @"tweetDelayMilliseconds") manager
 
   Monad.forM_ (book ^. field @"threads") $ \thread -> do
     tryPostThread env thread
@@ -92,7 +103,7 @@ makeDelay env = Concurrent.threadDelay (envTweetDelayMilliseconds env * 1000)
 
 tryPostThread :: Env -> Shakespeare.Twitter.Thread -> IO ()
 tryPostThread env thread = do
-  possibleResult <- Exception.try @Exception.SomeException (postThread env thread)
+  possibleResult <- Exception.Safe.tryAny (postThread env thread)
   case possibleResult of
     Left err -> Logging.warn $ Formatting.sformat Formatting.shown err
     Right () -> return ()
@@ -102,25 +113,37 @@ postThread env (Shakespeare.Twitter.Thread tweets) = go Nothing tweets
   where
   go _ [] = return ()
   go parent (tweet : rest) = do
-    status <- postStatus env parent tweet
-    let statusId = Twitter.Types.statusId status
-    go (Just statusId) rest
+    (status, handle) <- postStatus env parent tweet
 
-postStatus :: Env -> Maybe Twitter.Types.StatusId -> Shakespeare.Twitter.Tweet -> IO Twitter.Types.Status
-postStatus env parent tweet = do
+    case rest of
+      [] -> return ()
+      (_ : _) -> makeDelay env
+
+    let statusId = Twitter.Types.statusId status
+    go (Just (statusId, handle)) rest
+
+postStatus :: Env -> Maybe (Twitter.Types.StatusId, Text) -> Shakespeare.Twitter.Tweet -> IO (Twitter.Types.Status, Text)
+postStatus env maybeParentInfo tweet = do
   let
     authorName = tweet ^. field @"author"
-    status = tweet ^. field @"text"
-  twInfo <-
+    rawStatus = tweet ^. field @"text"
+    maybeStatusId = maybeParentInfo ^? _Ctor @"Just" . typed @Twitter.Types.StatusId
+  userInfo <-
     case Map.lookup authorName (envNameToTWInfo env) of
       Nothing -> do
         Logging.log $ Formatting.sformat ("Missing author: " % Formatting.stext) authorName
         fail "Missing author"
       Just x -> return x
+  let
+    userHandle = userInfoHandle userInfo
+    status =
+      case maybeParentInfo of
+        Just (_, parentHandle) | parentHandle /= userHandle -> Text.concat ["@", parentHandle, " ", rawStatus]
+        _ -> rawStatus
   Logging.log $ Formatting.sformat ("Tweet: " % Formatting.stext % ": " % Formatting.stext) authorName status
   let
     baseStatus = Twitter.Conduit.update status
-    statusWithParent = Lens.set Twitter.Conduit.Parameters.inReplyToStatusId parent baseStatus
+    statusWithParent = Lens.set Twitter.Conduit.Parameters.inReplyToStatusId maybeStatusId baseStatus
+    twInfo = userInfoTWInfo userInfo
   response <- Twitter.Conduit.call twInfo (envManager env) statusWithParent
-  makeDelay env
-  return response
+  return (response, userHandle)

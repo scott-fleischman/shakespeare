@@ -24,19 +24,20 @@ instance Aeson.ToJSON Book
 instance Aeson.FromJSON Book
 
 data Config = Config
-  { accounts :: Map Text TokenInfo
+  { accounts :: Map Text UserInfo
   , app :: AppInfo
   , tweetDelayMilliseconds :: Int
   } deriving Generic
 instance Aeson.ToJSON Config
 instance Aeson.FromJSON Config
 
-data TokenInfo = TokenInfo
-  { token :: Text
+data UserInfo = UserInfo
+  { handle :: Text
+  , token :: Text
   , secret :: Text
   } deriving Generic
-instance Aeson.ToJSON TokenInfo
-instance Aeson.FromJSON TokenInfo
+instance Aeson.ToJSON UserInfo
+instance Aeson.FromJSON UserInfo
 
 data AppInfo = AppInfo
   { key :: Text
