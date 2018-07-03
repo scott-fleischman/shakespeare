@@ -95,18 +95,11 @@ main = Logging.withStdoutLogging $ do
   let env = Env nameToUserInfo (config ^. field @"tweetDelayMilliseconds") manager
 
   Monad.forM_ (book ^. field @"threads") $ \thread -> do
-    tryPostThread env thread
+    postThread env thread
     makeDelay env
 
 makeDelay :: Env -> IO ()
 makeDelay env = Concurrent.threadDelay (envTweetDelayMilliseconds env * 1000)
-
-tryPostThread :: Env -> Shakespeare.Twitter.Thread -> IO ()
-tryPostThread env thread = do
-  possibleResult <- Exception.Safe.tryAny (postThread env thread)
-  case possibleResult of
-    Left err -> Logging.warn $ Formatting.sformat Formatting.shown err
-    Right () -> return ()
 
 postThread :: Env -> Shakespeare.Twitter.Thread -> IO ()
 postThread env (Shakespeare.Twitter.Thread tweets) = go Nothing tweets
