@@ -16,9 +16,10 @@ import qualified Data.Foldable as Foldable
 import           Data.Generics.Product (field, position, typed)
 import           Data.Generics.Sum (_Ctor, _Typed)
 import qualified Data.List as List
+import           Data.Map.Lazy (Map)
 import qualified Data.Map.Lazy as Map
+import qualified Data.Maybe as Maybe
 import qualified Data.Ord as Ord
-import           Data.Set (Set)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import qualified Data.Text as Text
@@ -92,28 +93,36 @@ makeSceneItemTweets (SceneItem2Note note) =
 makeSceneItemTweets (SceneItem2NamedDialog (NamedDialog actor lines)) =
   let
     rawAuthor = getTweetAuthor actor
-    isAccountActor = Set.member rawAuthor accountActorSet
+    accountActorResult = Map.lookup rawAuthor actorNameToAccountName
+    isAccountActor = Maybe.isJust accountActorResult
     rawLines = Lens.toListOf (traverse . typed @Line . typed @Text) lines
     finalLines = if isAccountActor then rawLines else renderDialogActor actor : rawLines
-    finalAuthor = if isAccountActor then rawAuthor else fallbackAuthorName
+    finalAuthor = Maybe.fromMaybe fallbackAuthorName accountActorResult
   in
     fmap
       (Twitter.Tweet finalAuthor)
       (breakLinesIntoTweets finalLines)
 
-accountActorSet :: Set Text
-accountActorSet = Set.fromList
-  [ "hamlet"
-  , "king"
-  , "polonius"
-  , "horatio"
-  , "laertes"
-  , "ophelia"
-  , "queen"
-  , "ghost"
-  , "rosencrantz"
-  , "guildenstern"
-  ]
+actorNameToAccountName :: Map Text Text
+actorNameToAccountName = Map.fromList $
+  ("player king", "first player") :
+  fmap (\x -> (x, x))
+    [ "hamlet"
+    , "king"
+    , "polonius"
+    , "horatio"
+    , "laertes"
+    , "ophelia"
+    , "queen"
+    , "ghost"
+    , "rosencrantz"
+    , "guildenstern"
+    , "fortinbras"
+    , "marcellus"
+    , "barnardo"
+    , "first player"
+    , "first clown"
+    ]
 
 fallbackAuthorName :: Text
 fallbackAuthorName = "rest"

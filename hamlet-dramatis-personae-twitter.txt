@@ -11,20 +11,20 @@ The @Ghost_1607 of the late king, Hamlet’s father.
 @Laertes_1607, Son to Polonius.
 @Ophelia_1607, Daughter to Polonius.
 @Horatio_1607, Friend to Hamlet.
-Fortinbras, Prince of Norway.
+@Fortinbras_1607, Prince of Norway.
 Voltemand, Courtier.
 Cornelius, Courtier.
 @Rosencrantz_160, Courtier.
 @Guildenstern_16, Courtier.
-Marcellus, Officer.
-Barnardo, Officer.
+@Marcellus_1607, Officer.
+@Barnardo_1607, Officer.
 Francisco, a Soldier
 Osric, Courtier.
 Reynaldo, Servant to Polonius.
-Players.
+Players. @Player_1607
 A Gentleman, Courtier.
 A Priest.
-Two Clowns, Grave-diggers.
+Two Clowns, Grave-diggers. @Clown_1607
 A Captain.
 English Ambassadors.
 Lords, Ladies, Officers, Soldiers, Sailors, Messengers, and Attendants.
