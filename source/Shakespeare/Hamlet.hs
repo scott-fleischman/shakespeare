@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -10,6 +11,7 @@ module Shakespeare.Hamlet where
 import           Control.Lens ((^.))
 import qualified Control.Lens as Lens
 import           Control.Monad ((>=>))
+import qualified Control.Monad.Extra as Monad.Extra
 import qualified Data.Aeson as Aeson
 import qualified Data.Char as Char
 import qualified Data.Foldable as Foldable
@@ -44,7 +46,10 @@ main = do
   Text.Lazy.IO.putStrLn $ Formatting.format ("actors count: " % Formatting.shown) (length . (\(Actors actors _) -> actors) $ outlineActors outline)
   Text.Lazy.IO.putStrLn $ Formatting.format ("acts count: " % Formatting.shown) (length $ outlineActs outline)
 
-  let book = makeTwitterBook outline
+  book <-
+    case makeTwitterBook outline of
+      Left err -> fail err
+      Right x -> return x
   printTwitterBookStats book
   Aeson.encodeFile "book.json" book
 
@@ -62,22 +67,27 @@ printTwitterBookStats book = do
       $ tweets
   mapM_ (uncurry $ Formatting.fprint $ (Formatting.right 14 ' ' %. Formatting.stext) % Formatting.shown % "\n") authorTweets
 
-makeTwitterBook :: Outline3 -> Twitter.Book
-makeTwitterBook = Twitter.Book . concatMap makeActThread . (Lens.view $ typed @[Act2])
+makeTwitterBook :: Outline3 -> Either String Twitter.Book
+makeTwitterBook = fmap Twitter.Book . Monad.Extra.concatMapM makeActThread . (Lens.view $ typed @[Act2])
 
-makeActThread :: Act2 -> [Twitter.Thread]
-makeActThread act = fmap (makeSceneThread act) $ act ^. typed @[Scene2]
+makeActThread :: Act2 -> Either String [Twitter.Thread]
+makeActThread act = traverse (makeSceneThread act) $ act ^. typed @[Scene2]
 
 narratorName :: Text
 narratorName = "narrator"
 
-makeSceneThread :: Act2 -> Scene2 -> Twitter.Thread
-makeSceneThread act scene =
-  Twitter.Thread
-    $ Twitter.Tweet narratorName sceneTweet
-    : concatMap makeSceneItemTweets (scene ^. typed @[SceneItem2])
+makeSceneThread :: Act2 -> Scene2 -> Either String Twitter.Thread
+makeSceneThread act scene = prependSceneTweet sceneLineTweets
   where
-  sceneTweet = Formatting.sformat
+  prependSceneTweet :: [Twitter.Tweet] -> Either String Twitter.Thread
+  prependSceneTweet [] = Left "Empty scene"
+  prependSceneTweet (tweet : rest) | tweet ^. field @"author" == narratorName = Right . Twitter.Thread $ newTweet : rest
+    where
+    newTweet = Lens.set (field @"text") newText tweet
+    newText = Formatting.sformat (Formatting.stext % "\n\n" % Formatting.stext) sceneTweetText (tweet ^. field @"text")
+  prependSceneTweet (_ : _) = Left "Non-narrator tweet"
+  sceneLineTweets = concatMap makeSceneItemTweets (scene ^. typed @[SceneItem2])
+  sceneTweetText = Formatting.sformat
     ( "#Hamlet Act " % Formatting.stext % ".\n"
     % "Scene " % Formatting.stext % ". " % Formatting.stext
     )
